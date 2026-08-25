@@ -1,174 +1,298 @@
-import {
-  CheckCircle2,
-  CircleDashed,
-  CreditCard,
-  Globe2,
-  LayoutTemplate,
-  PackageSearch,
-  Palette,
-  Search,
-  Store,
-  Truck,
-} from "lucide-react"
+"use client"
+
+import Image from "next/image"
+import { useState } from "react"
+import { CheckCircle2, ExternalLink, Globe2, ImagePlus, LoaderCircle, MapPin, PackageSearch, Palette, Plus, Save, Search, Store, Trash2, Truck } from "lucide-react"
+import { toast } from "sonner"
 
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import {
-  Card,
-  CardAction,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
+import { Button, ButtonLink } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Textarea } from "@/components/ui/textarea"
+import { postJson } from "@/lib/api/client"
+import { createClient as createSupabaseClient } from "@/lib/supabase/client"
+import { storefrontSettingsSchema } from "./schemas"
+import type { StorefrontAdminData, StorefrontBannerResult, StorefrontBannerUpload, StorefrontStatus } from "./types"
 
-const managementAreas = [
-  {
-    description: "Choose your colours, logo, typography, and homepage sections.",
-    icon: Palette,
-    title: "Store design",
-  },
-  {
-    description: "Decide which products, categories, and collections appear online.",
-    icon: PackageSearch,
-    title: "Products & collections",
-  },
-  {
-    description: "Build your homepage, navigation, contact, and policy pages.",
-    icon: LayoutTemplate,
-    title: "Pages & navigation",
-  },
-  {
-    description: "Connect payment methods and configure your checkout experience.",
-    icon: CreditCard,
-    title: "Payments & checkout",
-  },
-  {
-    description: "Set delivery areas, pickup options, fees, and fulfilment rules.",
-    icon: Truck,
-    title: "Delivery & pickup",
-  },
-  {
-    description: "Connect a domain and control search titles and descriptions.",
-    icon: Search,
-    title: "Domain & SEO",
-  },
-] as const
+type SaveResult = { productCount: number; slug: string; status: string }
 
-const launchSteps = [
-  { complete: true, label: "Business workspace created" },
-  { complete: false, label: "Choose storefront design" },
-  { complete: false, label: "Configure checkout and delivery" },
-  { complete: false, label: "Review and publish website" },
-] as const
+function nullable(value: string) {
+  return value.trim() || null
+}
 
-export function StorefrontOverview({ businessName }: { businessName: string }) {
+export function StorefrontOverview({ data }: { data: StorefrontAdminData }) {
+  const [settings, setSettings] = useState(data.settings)
+  const [publishedIds, setPublishedIds] = useState(() => new Set(data.products.filter((product) => product.isPublished).map((product) => product.id)))
+  const [featuredIds, setFeaturedIds] = useState(() => new Set(data.products.filter((product) => product.isFeatured).map((product) => product.id)))
+  const [pending, setPending] = useState(false)
+  const [bannerPending, setBannerPending] = useState(false)
+  const [productQuery, setProductQuery] = useState("")
+  const money = new Intl.NumberFormat("en", { currency: data.currencyCode, currencyDisplay: "narrowSymbol", style: "currency" })
+  const previewHref = `/store/${data.slug}?preview=1`
+  const liveHref = `/store/${data.slug}`
+  const visibleProducts = data.products.filter((product) => product.name.toLowerCase().includes(productQuery.trim().toLowerCase()))
+
+  function addDeliveryZone() {
+    setSettings((current) => ({
+      ...current,
+      deliveryZones: [...current.deliveryZones, {
+        coverageDetails: null,
+        deliveryFee: 0,
+        id: crypto.randomUUID(),
+        isActive: true,
+        name: "",
+        position: current.deliveryZones.length,
+      }],
+    }))
+  }
+
+  function updateDeliveryZone(id: string, changes: Partial<StorefrontAdminData["settings"]["deliveryZones"][number]>) {
+    setSettings((current) => ({
+      ...current,
+      deliveryZones: current.deliveryZones.map((zone) => zone.id === id ? { ...zone, ...changes } : zone),
+    }))
+  }
+
+  function removeDeliveryZone(id: string) {
+    setSettings((current) => ({
+      ...current,
+      deliveryZones: current.deliveryZones.filter((zone) => zone.id !== id)
+        .map((zone, position) => ({ ...zone, position })),
+    }))
+  }
+
+  async function uploadBanner(file: File | undefined) {
+    if (!file || bannerPending || !data.canManage) return
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type) || file.size > 5 * 1024 * 1024) {
+      toast.error("Choose a JPEG, PNG, or WebP image smaller than 5 MB.")
+      return
+    }
+    setBannerPending(true)
+    const preparation = await postJson<StorefrontBannerUpload>("/api/storefront/banner", {
+      operation: "prepare",
+      payload: { fileName: file.name, fileSize: file.size, mimeType: file.type },
+    })
+    if (!preparation.ok) {
+      setBannerPending(false)
+      toast.error(preparation.error.message)
+      return
+    }
+    const upload = await createSupabaseClient().storage.from("storefront-media")
+      .uploadToSignedUrl(preparation.data.path, preparation.data.token, file, { contentType: file.type })
+    if (upload.error) {
+      setBannerPending(false)
+      toast.error("We couldn't upload the website banner. Please try again.")
+      return
+    }
+    const finalization = await postJson<StorefrontBannerResult>("/api/storefront/banner", {
+      operation: "finalize",
+      payload: { storagePath: preparation.data.path },
+    })
+    setBannerPending(false)
+    if (!finalization.ok) {
+      toast.error(finalization.error.message)
+      return
+    }
+    setSettings((current) => ({ ...current, heroBannerUrl: finalization.data.bannerUrl }))
+    toast.success(finalization.message ?? "Website banner updated.")
+  }
+
+  async function removeBanner() {
+    if (bannerPending || !data.canManage) return
+    setBannerPending(true)
+    const response = await postJson<StorefrontBannerResult>("/api/storefront/banner", {
+      operation: "remove",
+      payload: {},
+    })
+    setBannerPending(false)
+    if (!response.ok) {
+      toast.error(response.error.message)
+      return
+    }
+    setSettings((current) => ({ ...current, heroBannerUrl: null }))
+    toast.success(response.message ?? "Website banner removed.")
+  }
+
+  function togglePublished(productId: string) {
+    setPublishedIds((current) => {
+      const next = new Set(current)
+      if (next.has(productId)) {
+        next.delete(productId)
+        setFeaturedIds((featured) => {
+          const updated = new Set(featured)
+          updated.delete(productId)
+          return updated
+        })
+      } else next.add(productId)
+      return next
+    })
+  }
+
+  function toggleFeatured(productId: string) {
+    if (!publishedIds.has(productId)) return
+    setFeaturedIds((current) => {
+      const next = new Set(current)
+      if (next.has(productId)) next.delete(productId)
+      else next.add(productId)
+      return next
+    })
+  }
+
+  async function save(requestedStatus: StorefrontStatus) {
+    if (pending || !data.canManage) return
+    const payload = {
+      ...settings,
+      announcement: nullable(settings.announcement ?? ""),
+      bankTransferInstructions: nullable(settings.bankTransferInstructions ?? ""),
+      contactEmail: nullable(settings.contactEmail ?? ""),
+      contactPhone: nullable(settings.contactPhone ?? ""),
+      featuredProductIds: [...featuredIds],
+      heroSubtitle: nullable(settings.heroSubtitle ?? ""),
+      pickupAddress: nullable(settings.pickupAddress ?? ""),
+      publishedProductIds: [...publishedIds],
+      requestedStatus,
+      seoDescription: nullable(settings.seoDescription ?? ""),
+      seoTitle: nullable(settings.seoTitle ?? ""),
+    }
+    const validation = storefrontSettingsSchema.safeParse(payload)
+    if (!validation.success) {
+      toast.error(validation.error.issues[0]?.message ?? "Check the storefront settings.")
+      return
+    }
+    setPending(true)
+    const response = await postJson<SaveResult>("/api/storefront", validation.data)
+    setPending(false)
+    if (!response.ok) {
+      toast.error(response.error.message)
+      return
+    }
+    setSettings((current) => ({ ...current, status: response.data.status as StorefrontStatus }))
+    toast.success(response.message ?? "Storefront saved.")
+  }
+
+  const fieldClass = "grid gap-2 text-sm font-medium"
   return (
     <div className="space-y-6">
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <header className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
         <div>
-          <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
-            Online storefront
-          </p>
+          <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">Online storefront</p>
           <h1 className="mt-1 text-2xl font-semibold tracking-tight">My Website</h1>
-          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-            Build and manage the online shopping experience for {businessName}.
-          </p>
+          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">Design, publish, and operate the online store for {data.businessName}.</p>
         </div>
-        <Button disabled size="sm" variant="outline">
-          <Globe2 aria-hidden="true" />
-          Preview website
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <ButtonLink href={previewHref} target="_blank" variant="outline"><Globe2 aria-hidden="true" />Preview<ExternalLink aria-hidden="true" /></ButtonLink>
+          <Button disabled={pending || !data.canManage} onClick={() => save(settings.status)} variant="outline">{pending ? <LoaderCircle aria-hidden="true" className="animate-spin" /> : <Save aria-hidden="true" />}{settings.status === "draft" ? "Save draft" : "Save changes"}</Button>
+          {settings.status === "published" ? (
+            <Button disabled={pending || !data.canManage} onClick={() => save("paused")} variant="secondary">Pause store</Button>
+          ) : (
+            <Button disabled={pending || !data.canManage} onClick={() => save("published")}><Store aria-hidden="true" />Publish store</Button>
+          )}
+        </div>
       </header>
 
       <Card className="bg-foreground text-background ring-0">
-        <CardContent className="grid gap-6 px-5 py-1 sm:px-6 lg:grid-cols-[1fr_0.85fr] lg:items-center">
+        <CardContent className="flex flex-col gap-5 px-5 py-2 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <Badge className="bg-background/10 text-background" variant="secondary">
-              Storefront not published
-            </Badge>
-            <h2 className="mt-4 text-2xl font-semibold tracking-tight">
-              Turn your catalogue into an online store
-            </h2>
-            <p className="mt-2 max-w-xl text-sm leading-6 text-background/70">
-              This workspace will bring design, products, checkout, delivery,
-              domain settings, and publishing into one place.
-            </p>
+            <Badge className="bg-background/10 text-background" variant="secondary">{settings.status === "published" ? "Storefront live" : settings.status === "paused" ? "Storefront paused" : "Draft storefront"}</Badge>
+            <h2 className="mt-3 text-xl font-semibold">{publishedIds.size} products selected for your online store</h2>
+            <p className="mt-1 text-sm text-background/65">Your store address is /store/{data.slug}</p>
           </div>
-
-          <div className="rounded-xl bg-background/8 p-4 ring-1 ring-background/10">
-            <div className="flex items-center justify-between gap-4">
-              <p className="text-sm font-medium">Launch checklist</p>
-              <span className="text-xs text-background/60">1 of 4 complete</span>
-            </div>
-            <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-background/15">
-              <div className="h-full w-1/4 rounded-full bg-emerald-400" />
-            </div>
-            <ul className="mt-4 grid gap-2.5">
-              {launchSteps.map((step) => {
-                const Icon = step.complete ? CheckCircle2 : CircleDashed
-
-                return (
-                  <li
-                    className="flex items-center gap-2 text-xs text-background/75"
-                    key={step.label}
-                  >
-                    <Icon
-                      aria-hidden="true"
-                      className={step.complete ? "size-4 text-emerald-400" : "size-4"}
-                    />
-                    {step.label}
-                  </li>
-                )
-              })}
-            </ul>
-          </div>
+          {settings.status === "published" ? <ButtonLink href={liveHref} target="_blank" variant="secondary">Visit live store<ExternalLink aria-hidden="true" /></ButtonLink> : null}
         </CardContent>
       </Card>
 
-      <section aria-labelledby="website-management-heading">
-        <div className="mb-3">
-          <h2 className="text-base font-semibold" id="website-management-heading">
-            Website management
-          </h2>
-          <p className="mt-0.5 text-sm text-muted-foreground">
-            Everything needed to prepare and operate your storefront.
-          </p>
-        </div>
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {managementAreas.map((area) => {
-            const Icon = area.icon
+      <Tabs defaultValue="design">
+        <TabsList className="max-w-full overflow-x-auto">
+          <TabsTrigger value="design"><Palette aria-hidden="true" />Design</TabsTrigger>
+          <TabsTrigger value="products"><PackageSearch aria-hidden="true" />Products</TabsTrigger>
+          <TabsTrigger value="fulfilment"><Truck aria-hidden="true" />Checkout</TabsTrigger>
+          <TabsTrigger value="seo"><Search aria-hidden="true" />Contact & SEO</TabsTrigger>
+        </TabsList>
 
-            return (
-              <Card className="min-h-40" key={area.title} size="sm">
-                <CardHeader>
-                  <span className="mb-2 flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                    <Icon aria-hidden="true" className="size-4" />
-                  </span>
-                  <CardAction>
-                    <Badge variant="secondary">Coming soon</Badge>
-                  </CardAction>
-                  <CardTitle as="h3">{area.title}</CardTitle>
-                  <CardDescription className="text-xs leading-5">
-                    {area.description}
-                  </CardDescription>
-                </CardHeader>
-              </Card>
-            )
-          })}
-        </div>
-      </section>
+        <TabsContent value="design">
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+            <Card>
+              <CardHeader><CardTitle as="h2">Store design</CardTitle><CardDescription>Set the message and colour customers see first.</CardDescription></CardHeader>
+              <CardContent className="grid gap-5">
+                <label className={fieldClass}>Announcement<Input maxLength={160} onChange={(event) => setSettings({ ...settings, announcement: event.currentTarget.value })} placeholder="Free delivery on orders over ₦50,000" value={settings.announcement ?? ""} /></label>
+                <div className={fieldClass}><span>Website banner <span className="font-normal text-muted-foreground">(optional)</span></span>{settings.heroBannerUrl ? <div className="relative aspect-[3/1] overflow-hidden rounded-xl border bg-muted"><Image alt="Website banner preview" fill className="object-cover" sizes="(max-width: 1024px) 100vw, 60vw" src={settings.heroBannerUrl} unoptimized /></div> : <div className="flex aspect-[3/1] items-center justify-center rounded-xl border border-dashed bg-muted/30 text-xs text-muted-foreground">No banner image selected</div>}<div className="flex flex-wrap gap-2"><label className="inline-flex h-8 cursor-pointer items-center justify-center gap-1.5 rounded-lg border bg-background px-2.5 text-[0.8rem] font-medium hover:bg-muted"><ImagePlus aria-hidden="true" className="size-3.5" />{bannerPending ? "Uploading…" : settings.heroBannerUrl ? "Replace banner" : "Upload banner"}<input accept="image/jpeg,image/png,image/webp" className="sr-only" disabled={bannerPending || !data.canManage} onChange={(event) => { void uploadBanner(event.currentTarget.files?.[0]); event.currentTarget.value = "" }} type="file" /></label>{settings.heroBannerUrl ? <Button disabled={bannerPending || !data.canManage} onClick={() => void removeBanner()} size="sm" type="button" variant="outline"><Trash2 aria-hidden="true" />Remove</Button> : null}</div><span className="text-xs font-normal text-muted-foreground">JPEG, PNG, or WebP · up to 5 MB · a wide 3:1 image works best.</span></div>
+                <label className={fieldClass}>Hero title<Input maxLength={100} onChange={(event) => setSettings({ ...settings, heroTitle: event.currentTarget.value })} value={settings.heroTitle} /></label>
+                <label className={fieldClass}>Hero subtitle<Textarea maxLength={240} onChange={(event) => setSettings({ ...settings, heroSubtitle: event.currentTarget.value })} value={settings.heroSubtitle ?? ""} /></label>
+                <label className={fieldClass}>Brand colour<div className="flex gap-2"><Input aria-label="Brand colour picker" className="h-10 w-14 p-1" onChange={(event) => setSettings({ ...settings, primaryColor: event.currentTarget.value })} type="color" value={settings.primaryColor} /><Input maxLength={7} onChange={(event) => setSettings({ ...settings, primaryColor: event.currentTarget.value })} value={settings.primaryColor} /></div></label>
+              </CardContent>
+            </Card>
+            <Card style={{ borderTop: `5px solid ${settings.primaryColor}` }}>
+              <CardHeader><CardTitle>Homepage preview</CardTitle></CardHeader>
+              <CardContent>
+                {settings.announcement ? <p className="mb-5 rounded-lg px-3 py-2 text-center text-xs text-white" style={{ backgroundColor: settings.primaryColor }}>{settings.announcement}</p> : null}
+                <div className="overflow-hidden rounded-xl bg-muted text-center">{settings.heroBannerUrl ? <div className="relative aspect-[3/1]"><Image alt="Website hero banner" fill className="object-cover" sizes="320px" src={settings.heroBannerUrl} unoptimized /></div> : <div className="p-5"><Store aria-hidden="true" className="mx-auto size-8" style={{ color: settings.primaryColor }} /></div>}<div className="p-5"><h3 className="text-xl font-semibold">{settings.heroTitle || "Your headline"}</h3><p className="mt-2 text-sm text-muted-foreground">{settings.heroSubtitle || "Your store description appears here."}</p><span className="mt-5 inline-flex rounded-lg px-4 py-2 text-sm font-medium text-white" style={{ backgroundColor: settings.primaryColor }}>Shop now</span></div></div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
 
-      <div className="flex items-start gap-3 rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
-        <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted text-foreground">
-          <Store aria-hidden="true" className="size-4" />
-        </span>
-        <p className="leading-6">
-          The module is ready in your workspace. Storefront configuration and
-          publishing controls will be added here without changing your existing
-          catalogue, inventory, or order workflows.
-        </p>
-      </div>
+        <TabsContent value="products">
+          <Card>
+            <CardHeader><CardTitle as="h2">Online products</CardTitle><CardDescription>Only active products can be published. Featured products appear first.</CardDescription></CardHeader>
+            <CardContent>
+              <div className="relative mb-4"><Search aria-hidden="true" className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" /><Input className="h-10 pl-9" onChange={(event) => setProductQuery(event.currentTarget.value)} placeholder="Search products" value={productQuery} /></div>
+              <div className="divide-y rounded-xl border">
+                {visibleProducts.map((product) => {
+                  const active = product.status === "active"
+                  const published = publishedIds.has(product.id)
+                  return <div className="flex flex-col gap-3 p-3 sm:flex-row sm:items-center" key={product.id}>
+                    <div className="flex min-w-0 flex-1 items-center gap-3">
+                      <span className="relative size-12 shrink-0 overflow-hidden rounded-lg bg-muted">{product.imageUrl ? <Image alt="" fill className="object-cover" sizes="48px" src={product.imageUrl} unoptimized /> : <PackageSearch aria-hidden="true" className="absolute inset-0 m-auto size-5 text-muted-foreground" />}</span>
+                      <span className="min-w-0"><span className="block truncate font-medium">{product.name}</span><span className="block text-xs text-muted-foreground">{product.categoryName ?? "Uncategorised"} · {money.format(product.sellingPrice)}</span></span>
+                      {!active ? <Badge variant="secondary">{product.status}</Badge> : null}
+                    </div>
+                    <div className="flex items-center gap-5 pl-15 sm:pl-0">
+                      <label className="flex items-center gap-2 text-xs"><input checked={featuredIds.has(product.id)} disabled={!published} onChange={() => toggleFeatured(product.id)} type="checkbox" />Featured</label>
+                      <label className="flex items-center gap-2 text-xs"><input checked={published} disabled={!active} onChange={() => togglePublished(product.id)} type="checkbox" />Published</label>
+                    </div>
+                  </div>
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="fulfilment">
+          <div className="grid gap-4 lg:grid-cols-2">
+            <Card><CardHeader><CardTitle as="h2">Delivery and pickup</CardTitle><CardDescription>Charge the correct amount by defining each area you deliver to.</CardDescription></CardHeader><CardContent className="grid gap-5">
+              <label className="flex items-start gap-3"><input checked={settings.deliveryEnabled} className="mt-1" onChange={(event) => setSettings({ ...settings, deliveryEnabled: event.currentTarget.checked })} type="checkbox" /><span><strong className="block text-sm">Offer delivery</strong><span className="text-xs text-muted-foreground">Collect a delivery address during checkout.</span></span></label>
+              {settings.deliveryEnabled ? <div className="grid gap-3">
+                <div className="flex items-center justify-between gap-3"><div><h3 className="text-sm font-medium">Delivery zones</h3><p className="text-xs text-muted-foreground">Customers select one of the active zones at checkout.</p></div><Button onClick={addDeliveryZone} size="sm" type="button" variant="outline"><Plus aria-hidden="true" />Add zone</Button></div>
+                {settings.deliveryZones.length ? settings.deliveryZones.map((zone) => <div className="grid gap-3 rounded-xl border p-4" key={zone.id}>
+                  <div className="flex items-center justify-between gap-3"><span className="flex items-center gap-2 text-sm font-medium"><MapPin aria-hidden="true" className="size-4 text-muted-foreground" />{zone.name || "New delivery zone"}</span><Button aria-label={`Remove ${zone.name || "delivery zone"}`} onClick={() => removeDeliveryZone(zone.id)} size="icon-sm" type="button" variant="ghost"><Trash2 aria-hidden="true" /></Button></div>
+                  <div className="grid gap-3 sm:grid-cols-2"><label className={fieldClass}>Zone name<Input maxLength={80} onChange={(event) => updateDeliveryZone(zone.id, { name: event.currentTarget.value })} placeholder="Lagos Island" value={zone.name} /></label><label className={fieldClass}>Delivery price<Input min="0" onChange={(event) => updateDeliveryZone(zone.id, { deliveryFee: Number(event.currentTarget.value) })} step="0.01" type="number" value={zone.deliveryFee} /></label></div>
+                  <label className={fieldClass}>Areas covered <span className="font-normal text-muted-foreground">(optional)</span><Textarea maxLength={300} onChange={(event) => updateDeliveryZone(zone.id, { coverageDetails: event.currentTarget.value })} placeholder="Ikoyi, Victoria Island, Lekki Phase 1" value={zone.coverageDetails ?? ""} /></label>
+                  <label className="flex items-center gap-2 text-xs"><input checked={zone.isActive} onChange={(event) => updateDeliveryZone(zone.id, { isActive: event.currentTarget.checked })} type="checkbox" />Available to customers</label>
+                </div>) : <div className="rounded-xl border border-dashed p-5 text-center"><MapPin aria-hidden="true" className="mx-auto size-6 text-muted-foreground" /><p className="mt-2 text-sm font-medium">No delivery zones yet</p><p className="mt-1 text-xs text-muted-foreground">Add a zone and its delivery price before saving.</p></div>}
+              </div> : null}
+              <label className="flex items-start gap-3"><input checked={settings.pickupEnabled} className="mt-1" onChange={(event) => setSettings({ ...settings, pickupEnabled: event.currentTarget.checked })} type="checkbox" /><span><strong className="block text-sm">Offer pickup</strong><span className="text-xs text-muted-foreground">Customers can collect their order.</span></span></label>
+              {settings.pickupEnabled ? <label className={fieldClass}>Pickup address<Textarea maxLength={500} onChange={(event) => setSettings({ ...settings, pickupAddress: event.currentTarget.value })} value={settings.pickupAddress ?? ""} /></label> : null}
+            </CardContent></Card>
+            <Card><CardHeader><CardTitle as="h2">Payment methods</CardTitle><CardDescription>Payments are confirmed by staff from the order workspace.</CardDescription></CardHeader><CardContent className="grid gap-5">
+              <label className="flex items-start gap-3"><input checked={settings.payOnDeliveryEnabled} className="mt-1" onChange={(event) => setSettings({ ...settings, payOnDeliveryEnabled: event.currentTarget.checked })} type="checkbox" /><span><strong className="block text-sm">Pay on delivery or pickup</strong><span className="text-xs text-muted-foreground">Collect cash or confirm another payment when fulfilling.</span></span></label>
+              <label className="flex items-start gap-3"><input checked={settings.bankTransferEnabled} className="mt-1" onChange={(event) => setSettings({ ...settings, bankTransferEnabled: event.currentTarget.checked })} type="checkbox" /><span><strong className="block text-sm">Bank transfer</strong><span className="text-xs text-muted-foreground">Show transfer instructions after checkout.</span></span></label>
+              {settings.bankTransferEnabled ? <label className={fieldClass}>Bank transfer instructions<Textarea maxLength={1000} onChange={(event) => setSettings({ ...settings, bankTransferInstructions: event.currentTarget.value })} placeholder="Bank name, account name, account number, and reference instructions" value={settings.bankTransferInstructions ?? ""} /></label> : null}
+            </CardContent></Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="seo">
+          <div className="grid gap-4 lg:grid-cols-2">
+            <Card><CardHeader><CardTitle as="h2">Customer contact</CardTitle></CardHeader><CardContent className="grid gap-5"><label className={fieldClass}>Contact email<Input onChange={(event) => setSettings({ ...settings, contactEmail: event.currentTarget.value })} type="email" value={settings.contactEmail ?? ""} /></label><label className={fieldClass}>Contact phone<Input maxLength={32} onChange={(event) => setSettings({ ...settings, contactPhone: event.currentTarget.value })} type="tel" value={settings.contactPhone ?? ""} /></label></CardContent></Card>
+            <Card><CardHeader><CardTitle as="h2">Search appearance</CardTitle></CardHeader><CardContent className="grid gap-5"><label className={fieldClass}>SEO title<Input maxLength={70} onChange={(event) => setSettings({ ...settings, seoTitle: event.currentTarget.value })} value={settings.seoTitle ?? ""} /></label><label className={fieldClass}>SEO description<Textarea maxLength={170} onChange={(event) => setSettings({ ...settings, seoDescription: event.currentTarget.value })} value={settings.seoDescription ?? ""} /></label></CardContent></Card>
+          </div>
+        </TabsContent>
+      </Tabs>
+
+      {!data.canManage ? <div className="rounded-xl border bg-muted/30 p-4 text-sm text-muted-foreground">You have read-only access to this storefront. Ask an owner or administrator to make changes.</div> : null}
+      <div className="flex items-start gap-3 rounded-xl border border-dashed p-4 text-sm text-muted-foreground"><CheckCircle2 aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-emerald-600" /><p>Catalogue prices, availability, customers, and orders remain connected to the rest of Carborony. Storefront orders appear automatically in Orders.</p></div>
     </div>
   )
 }

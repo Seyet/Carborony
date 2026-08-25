@@ -80,7 +80,7 @@ export async function getOrderDetails(orderId: string): Promise<OrderDetailsData
   const business = await getCurrentBusiness()
   const supabase = await createClient()
   const orderResult = await supabase.from("orders")
-    .select("id, customer_id, buyer_name, buyer_phone, delivery_address, order_number, channel, status, payment_status, fulfillment_status, currency_code, subtotal_amount, discount_amount, tax_amount, shipping_amount, total_amount, notes, placed_at, completed_at")
+    .select("id, customer_id, buyer_name, buyer_phone, delivery_address, delivery_zone_name, order_number, channel, status, payment_status, fulfillment_status, currency_code, subtotal_amount, discount_amount, tax_amount, shipping_amount, total_amount, notes, placed_at, completed_at")
     .eq("business_id", business.id)
     .eq("document_type", "order")
     .eq("id", orderId)
@@ -125,10 +125,11 @@ export async function getOrderDetails(orderId: string): Promise<OrderDetailsData
     completedAt: order.completed_at,
     currencyCode: order.currency_code,
     deliveryAddress: order.delivery_address,
+    deliveryZoneName: order.delivery_zone_name,
     discountAmount: Number(order.discount_amount),
     fulfillmentStatus: order.fulfillment_status,
     history: (historyResult.data ?? []).map((entry) => ({
-      changedBy: "Business owner",
+      changedBy: entry.changed_by ? "Team member" : "Storefront customer",
       createdAt: entry.created_at,
       id: entry.id,
       newStatus: entry.new_status,

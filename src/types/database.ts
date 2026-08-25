@@ -33,6 +33,20 @@ type CategoryRow = {
   updated_at: string
 }
 
+type ActivityLogRow = {
+  action: string
+  actor_name: string
+  actor_user_id: string | null
+  business_id: string
+  created_at: string
+  entity_id: string | null
+  entity_name: string | null
+  entity_type: string
+  id: string
+  new_value: Json | null
+  previous_value: Json | null
+}
+
 type CustomerRow = {
   address: string | null
   birthday: string | null
@@ -141,16 +155,19 @@ type OrderItemRow = {
 }
 
 type OrderRow = {
+  buyer_email: string | null
   business_id: string
   buyer_name: string | null
   buyer_phone: string | null
   channel: string
   completed_at: string | null
   created_at: string
-  created_by: string
+  created_by: string | null
   currency_code: string
   customer_id: string | null
   delivery_address: string | null
+  delivery_zone_id: string | null
+  delivery_zone_name: string | null
   discount_amount: number
   document_type: string
   fulfillment_status: string
@@ -170,7 +187,7 @@ type OrderRow = {
 
 type OrderStatusHistoryRow = {
   business_id: string
-  changed_by: string
+  changed_by: string | null
   created_at: string
   id: string
   new_status: string
@@ -272,9 +289,68 @@ type SaleRow = {
   updated_at: string
 }
 
+type StorefrontRow = {
+  announcement: string | null
+  bank_transfer_enabled: boolean
+  bank_transfer_instructions: string | null
+  business_id: string
+  contact_email: string | null
+  contact_phone: string | null
+  created_at: string
+  delivery_enabled: boolean
+  hero_banner_path: string | null
+  hero_subtitle: string | null
+  hero_title: string
+  id: string
+  pay_on_delivery_enabled: boolean
+  pickup_address: string | null
+  pickup_enabled: boolean
+  primary_color: string
+  published_at: string | null
+  seo_description: string | null
+  seo_title: string | null
+  status: string
+  updated_at: string
+}
+
+type StorefrontDeliveryZoneRow = {
+  business_id: string
+  coverage_details: string | null
+  created_at: string
+  delivery_fee: number
+  id: string
+  is_active: boolean
+  name: string
+  position: number
+  updated_at: string
+}
+
+type StorefrontProductRow = {
+  business_id: string
+  created_at: string
+  is_featured: boolean
+  is_visible: boolean
+  position: number
+  product_id: string
+  updated_at: string
+}
+
+type StorefrontCheckoutRow = {
+  business_id: string
+  created_at: string
+  id: string
+  idempotency_key: string
+  order_id: string
+}
+
 export type Database = {
   public: {
     Tables: {
+      activity_logs: DomainTable<
+        ActivityLogRow,
+        "action" | "actor_name" | "business_id" | "entity_type",
+        "id" | "created_at"
+      >
       categories: DomainTable<
         CategoryRow,
         "business_id" | "created_by" | "name" | "slug"
@@ -627,6 +703,25 @@ export type Database = {
         SaleRow,
         "business_id" | "created_by" | "sale_number"
       >
+      storefront_checkouts: DomainTable<
+        StorefrontCheckoutRow,
+        "business_id" | "idempotency_key" | "order_id",
+        "id" | "created_at"
+      >
+      storefront_delivery_zones: DomainTable<
+        StorefrontDeliveryZoneRow,
+        "business_id" | "delivery_fee" | "name",
+        "id" | "created_at"
+      >
+      storefront_products: DomainTable<
+        StorefrontProductRow,
+        "business_id" | "product_id"
+      >
+      storefronts: DomainTable<
+        StorefrontRow,
+        "business_id" | "hero_title",
+        "id" | "created_at"
+      >
       staff_invitations: {
         Row: {
           accepted_at: string | null
@@ -702,6 +797,113 @@ export type Database = {
     }
     Views: Record<never, never>
     Functions: {
+      create_storefront_order: {
+        Args: {
+          checkout_buyer_email: string
+          checkout_buyer_name: string
+          checkout_buyer_phone: string
+          checkout_delivery_address: string
+          checkout_delivery_method: string
+          checkout_delivery_zone_id: string | null
+          checkout_idempotency_key: string
+          checkout_items: Json
+          checkout_notes: string
+          checkout_payment_method: string
+          store_slug: string
+        }
+        Returns: {
+          bank_transfer_instructions: string | null
+          currency_code: string
+          order_id: string
+          order_number: string
+          payment_method: string
+          total_amount: number
+        }[]
+      }
+      get_public_storefront: {
+        Args: { include_draft?: boolean; store_slug: string }
+        Returns: {
+          announcement: string | null
+          bank_transfer_enabled: boolean
+          bank_transfer_instructions: string | null
+          business_id: string
+          business_name: string
+          business_slug: string
+          contact_email: string | null
+          contact_phone: string | null
+          currency_code: string
+          delivery_enabled: boolean
+          delivery_zones: Json
+          hero_banner_path: string | null
+          hero_subtitle: string | null
+          hero_title: string
+          logo_path: string | null
+          pay_on_delivery_enabled: boolean
+          pickup_address: string | null
+          pickup_enabled: boolean
+          primary_color: string
+          seo_description: string | null
+          seo_title: string | null
+          storefront_status: string
+        }[]
+      }
+      get_public_storefront_products: {
+        Args: {
+          include_draft?: boolean
+          selected_product_id?: string
+          store_slug: string
+        }
+        Returns: {
+          available_stock: number | null
+          category_id: string | null
+          category_name: string | null
+          description: string | null
+          discount_price: number | null
+          is_featured: boolean
+          media: Json
+          product_id: string
+          product_name: string
+          selling_price: number
+          track_inventory: boolean
+          variants: Json
+        }[]
+      }
+      save_storefront: {
+        Args: {
+          featured_product_ids: string[]
+          published_product_ids: string[]
+          requested_status: string
+          storefront_configuration: Json
+          target_business_id: string
+        }
+        Returns: {
+          published_product_count: number
+          store_slug: string
+          storefront_status: string
+        }[]
+      }
+      search_business_activity: {
+        Args: {
+          result_limit?: number
+          result_offset?: number
+          search_query?: string
+          selected_area?: string
+          target_business_id: string
+        }
+        Returns: {
+          action: string
+          activity_id: string
+          actor_name: string
+          actor_user_id: string | null
+          entity_id: string | null
+          entity_name: string | null
+          entity_type: string
+          new_value: Json | null
+          occurred_at: string
+          previous_value: Json | null
+          total_count: number
+        }[]
+      }
       accept_staff_invitation: {
         Args: {
           accepted_name: string

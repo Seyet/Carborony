@@ -1,6 +1,7 @@
 import type { LucideIcon } from "lucide-react"
 import {
   BarChart3,
+  History,
   Boxes,
   Camera,
   ClipboardList,
@@ -102,6 +103,12 @@ export const primaryNavigation: readonly NavigationItem[] = [
     href: "/app/reports",
     icon: BarChart3,
     permission: "reports.view",
+  },
+  {
+    title: "Activity log",
+    href: "/app/activity",
+    icon: History,
+    permission: "activity.view",
   },
   {
     title: "My Website",

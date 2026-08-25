@@ -16,7 +16,7 @@ export type CurrentBusiness = {
 }
 
 const allPermissions = [
-  "customers.manage", "customers.view", "dashboard.view",
+  "activity.view", "customers.manage", "customers.view", "dashboard.view",
   "expenses.manage", "expenses.view", "inventory.manage", "inventory.view",
   "products.manage", "products.view", "reports.export", "reports.view",
   "sales.manage", "sales.view", "settings.manage", "settings.view",

@@ -51,6 +51,7 @@ export type OrderDetailsData = {
   completedAt: string | null
   currencyCode: string
   deliveryAddress: string | null
+  deliveryZoneName: string | null
   discountAmount: number
   fulfillmentStatus: string
   history: OrderStatusHistoryItem[]
