@@ -6,12 +6,12 @@ import {
   ClipboardList,
   Ellipsis,
   Home,
-  Layers3,
   Package,
   ShoppingCart,
 } from "lucide-react"
 import { useState } from "react"
 
+import { AppLogo } from "@/components/common/app-logo"
 import { Badge } from "@/components/ui/badge"
 import {
   Sheet,
@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/sheet"
 import { cn } from "@/lib/utils"
 import {
+  canAccessNavigationItem,
   isNavigationItemActive,
   marketingNavigation,
   primaryNavigation,
@@ -32,19 +33,25 @@ import { QuickActionGrid } from "./quick-actions"
 import type { ShellBusiness } from "./shell-types"
 
 const bottomNavigation = [
-  { title: "Home", href: "/app/dashboard", icon: Home },
-  { title: "Sales", href: "/app/sales", icon: ShoppingCart },
-  { title: "Catalogue", href: "/app/catalogue", icon: Package },
-  { title: "Orders", href: "/app/orders", icon: ClipboardList },
+  { title: "Home", href: "/app/dashboard", icon: Home, permission: "dashboard.view" },
+  { title: "Sales", href: "/app/sales", icon: ShoppingCart, permission: "sales.view" },
+  { title: "Catalogue", href: "/app/catalogue", icon: Package, permission: "products.view" },
+  { title: "Orders", href: "/app/orders", icon: ClipboardList, permission: "sales.view" },
 ] as const
 
 export function MobileNavigation({ business }: { business: ShellBusiness }) {
   const pathname = usePathname()
   const [moreIsOpen, setMoreIsOpen] = useState(false)
-  const primaryTabIsActive = bottomNavigation.some((item) =>
+  const accessibleBottomNavigation = bottomNavigation.filter((item) =>
+    business.permissions.includes(item.permission),
+  )
+  const primaryTabIsActive = accessibleBottomNavigation.some((item) =>
     isNavigationItemActive(pathname, item.href)
   )
   const moreIsActive = !primaryTabIsActive
+  const accessibleNavigation = primaryNavigation.filter((item) =>
+    canAccessNavigationItem(item, business.permissions),
+  )
 
   return (
     <nav
@@ -52,7 +59,7 @@ export function MobileNavigation({ business }: { business: ShellBusiness }) {
       className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-12px_32px_-24px_rgba(0,0,0,0.35)] backdrop-blur lg:hidden"
     >
       <div className="mx-auto grid h-16 max-w-xl grid-cols-5 px-2">
-        {bottomNavigation.map((item) => {
+        {accessibleBottomNavigation.map((item) => {
           const Icon = item.icon
           const isActive = isNavigationItemActive(pathname, item.href)
 
@@ -106,9 +113,7 @@ export function MobileNavigation({ business }: { business: ShellBusiness }) {
           >
             <SheetHeader className="border-b pb-4">
               <div className="flex items-center gap-3 pr-8">
-                <span className="flex size-9 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-                  <Layers3 className="size-4" aria-hidden="true" />
-                </span>
+                <AppLogo className="size-9" />
                 <span className="text-left">
                   <SheetTitle>More from Carborony</SheetTitle>
                   <SheetDescription>
@@ -144,6 +149,7 @@ export function MobileNavigation({ business }: { business: ShellBusiness }) {
                 <QuickActionGrid
                   className="sm:grid-cols-4"
                   onNavigate={() => setMoreIsOpen(false)}
+                  permissions={business.permissions}
                 />
               </section>
 
@@ -155,7 +161,7 @@ export function MobileNavigation({ business }: { business: ShellBusiness }) {
                   All modules
                 </h2>
                 <div className="grid grid-cols-2 gap-1 sm:grid-cols-3">
-                  {primaryNavigation.map((item) => {
+                  {accessibleNavigation.map((item) => {
                     const Icon = item.icon
                     const isActive = isNavigationItemActive(pathname, item.href)
 

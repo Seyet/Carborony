@@ -26,7 +26,7 @@ export default async function ResetPasswordPage() {
 
   return (
     <AuthCard
-      description="Your recovery link is verified. Choose a new password to secure your account."
+      description="Choose a new password to secure your account."
       footer={
         <Link
           className="inline-flex items-center gap-1.5 font-medium text-foreground underline-offset-4 hover:underline"

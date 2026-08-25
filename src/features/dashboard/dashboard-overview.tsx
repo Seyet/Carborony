@@ -6,7 +6,7 @@ import {
 } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import { ButtonLink } from "@/components/ui/button"
 import {
   Card,
   CardAction,
@@ -203,10 +203,10 @@ function RecentTransactions() {
         <CardTitle as="h2">Recent Transactions</CardTitle>
         <CardDescription>Latest activity across sales channels</CardDescription>
         <CardAction>
-          <Button variant="ghost" size="sm" render={<Link href="/app/sales" />}>
+          <ButtonLink href="/app/sales" size="sm" variant="ghost">
             View all
             <ArrowRight data-icon="inline-end" aria-hidden="true" />
-          </Button>
+          </ButtonLink>
         </CardAction>
       </CardHeader>
       <CardContent className="px-0">

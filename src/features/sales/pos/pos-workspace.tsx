@@ -1,7 +1,6 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import Link from "next/link"
 import { useRouter } from "next/navigation"
 import {
   Banknote,
@@ -22,7 +21,7 @@ import {
 import { toast } from "sonner"
 
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import { Button, ButtonLink } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Dialog,
@@ -332,7 +331,7 @@ export function PosWorkspace({ catalog }: { catalog: PosCatalog }) {
             <p className="mt-1 text-sm text-muted-foreground">Sell catalogue items, add an external item, or prepare an invoice.</p>
           </div>
           <div className="flex items-center gap-2">
-            <Button render={<Link href="/app/sales/history" />} variant="outline"><ReceiptText aria-hidden="true" />Sales history</Button>
+            <ButtonLink href="/app/sales/history" variant="outline"><ReceiptText aria-hidden="true" />Sales history</ButtonLink>
             <Badge className="hidden sm:inline-flex" variant="secondary">POS workspace</Badge>
           </div>
         </div>

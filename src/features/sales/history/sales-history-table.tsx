@@ -1,8 +1,7 @@
-import Link from "next/link"
 import { Eye, FileText, ReceiptText } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import { ButtonLink } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Table,
@@ -76,7 +75,7 @@ export function SalesHistoryTable({ items }: { items: SalesHistoryItem[] }) {
                   <TableCell className="capitalize text-muted-foreground">{item.paymentMethod}</TableCell>
                   <TableCell><Badge className={statusClass(item.status)} variant="secondary">{item.status}</Badge></TableCell>
                   <TableCell className="text-right font-medium">{formatMoney(item.currencyCode, item.totalAmount)}</TableCell>
-                  <TableCell className="pr-4 sm:pr-6"><div className="flex justify-end gap-2"><Button render={<Link href={`/app/sales/history/${item.kind}/${item.id}`} />} size="sm" variant="outline"><Eye aria-hidden="true" />View</Button><TransactionDocumentButton documentNumber={item.documentNumber} id={item.id} kind={item.kind} /></div></TableCell>
+                  <TableCell className="pr-4 sm:pr-6"><div className="flex justify-end gap-2"><ButtonLink href={`/app/sales/history/${item.kind}/${item.id}`} size="sm" variant="outline"><Eye aria-hidden="true" />View</ButtonLink><TransactionDocumentButton documentNumber={item.documentNumber} id={item.id} kind={item.kind} /></div></TableCell>
                 </TableRow>
               )
             })}

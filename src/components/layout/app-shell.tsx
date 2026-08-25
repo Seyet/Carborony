@@ -13,7 +13,7 @@ type AppShellProps = {
 
 export function AppShell({ business, children, user }: AppShellProps) {
   return (
-    <div className="min-h-svh bg-muted/25">
+    <div className="min-h-svh bg-background">
       <AppSidebar business={business} />
       <div className="min-h-svh lg:pl-64">
         <TopNavigation business={business} user={user} />

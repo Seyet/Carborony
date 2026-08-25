@@ -2,7 +2,7 @@ import Link from "next/link"
 import { Eye, ShoppingBag } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import { ButtonLink } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { orderStatusClass, orderStatusLabels } from "./order-status"
@@ -33,7 +33,7 @@ export function OrdersTable({ items, timezone }: { items: OrderListItem[]; timez
                 <TableCell><Badge className={orderStatusClass(order.status)} variant="secondary">{orderStatusLabels[order.status]}</Badge></TableCell>
                 <TableCell className="capitalize text-muted-foreground">{order.paymentStatus}</TableCell>
                 <TableCell className="text-right font-medium">{formatMoney(order.currencyCode, order.totalAmount)}</TableCell>
-                <TableCell className="pr-4 text-right sm:pr-6"><Button render={<Link href={`/app/orders/${order.id}`} />} size="sm" variant="outline"><Eye aria-hidden="true" />View</Button></TableCell>
+                <TableCell className="pr-4 text-right sm:pr-6"><ButtonLink href={`/app/orders/${order.id}`} size="sm" variant="outline"><Eye aria-hidden="true" />View</ButtonLink></TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -42,4 +42,3 @@ export function OrdersTable({ items, timezone }: { items: OrderListItem[]; timez
     </Card>
   )
 }
-

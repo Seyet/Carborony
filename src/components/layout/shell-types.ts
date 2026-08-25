@@ -1,6 +1,7 @@
 export type ShellBusiness = {
   name: string
   initials: string
+  permissions: string[]
   roleName: string
 }
 

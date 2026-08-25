@@ -1,10 +1,9 @@
 import type { Metadata } from "next"
-import Link from "next/link"
 import { notFound } from "next/navigation"
 import { ArrowLeft, Pencil } from "lucide-react"
 import { z } from "zod"
 
-import { Button } from "@/components/ui/button"
+import { ButtonLink } from "@/components/ui/button"
 import { CatalogueSetupRequired } from "@/features/catalogue/catalogue-setup-required"
 import { ProductDetails } from "@/features/catalogue/product-details"
 import {
@@ -44,23 +43,23 @@ export default async function ProductDetailsPage({ params }: ProductDetailsPageP
     <div className="space-y-6">
       <header className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
         <div className="flex items-start gap-3">
-          <Button
+          <ButtonLink
             aria-label="Back to catalogue"
-            render={<Link href="/app/catalogue" />}
+            href="/app/catalogue"
             size="icon"
             variant="outline"
           >
             <ArrowLeft aria-hidden="true" />
-          </Button>
+          </ButtonLink>
           <div>
             <p className="text-xs text-muted-foreground">Catalogue / {data.name}</p>
             <h1 className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">Product details</h1>
             <p className="mt-1 text-sm text-muted-foreground">View pricing, inventory, variants, and product media.</p>
           </div>
         </div>
-        <Button render={<Link href={`/app/catalogue/${data.id}/edit`} />} variant="outline">
+        <ButtonLink href={`/app/catalogue/${data.id}/edit`} variant="outline">
           <Pencil aria-hidden="true" />Edit product
-        </Button>
+        </ButtonLink>
       </header>
       <ProductDetails categories={options.categories} currencyCode={options.currencyCode} product={data} />
     </div>

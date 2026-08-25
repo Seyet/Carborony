@@ -1,10 +1,9 @@
 import type { Metadata } from "next"
 import Form from "next/form"
-import Link from "next/link"
 import { ChevronLeft, ChevronRight, ClipboardList, Plus, Search, X } from "lucide-react"
 
 import { EmptyState } from "@/components/common"
-import { Button } from "@/components/ui/button"
+import { Button, ButtonLink } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { OrderMetricCards } from "@/features/orders/order-metrics"
 import { OrdersSetupRequired } from "@/features/orders/orders-setup-required"
@@ -63,7 +62,7 @@ export default async function OrdersPage({ searchParams }: OrdersPageProps) {
     <div className="space-y-6">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div><p className="text-xs text-muted-foreground">Commerce / Orders</p><h1 className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">Orders</h1><p className="mt-1 text-sm text-muted-foreground">Track and fulfil orders across every sales channel.</p></div>
-        <Button render={<Link href="/app/orders/new" />}><Plus aria-hidden="true" />Create order</Button>
+        <ButtonLink href="/app/orders/new"><Plus aria-hidden="true" />Create order</ButtonLink>
       </header>
 
       <OrderMetricCards metrics={orders.metrics} />
@@ -73,7 +72,7 @@ export default async function OrdersPage({ searchParams }: OrdersPageProps) {
         <select className="h-10 rounded-lg border border-input bg-background px-3 text-sm" defaultValue={status} name="status"><option value="">All statuses</option>{statuses.map((item) => <option className="capitalize" key={item} value={item}>{item}</option>)}</select>
         <select className="h-10 rounded-lg border border-input bg-background px-3 text-sm" defaultValue={channel} name="channel"><option value="">All channels</option>{channels.map((item) => <option className="capitalize" key={item} value={item}>{item}</option>)}</select>
         <Button className="h-10" type="submit"><Search aria-hidden="true" />Filter</Button>
-        {hasFilters ? <Button className="h-10" render={<Link href="/app/orders" />} type="button" variant="outline"><X aria-hidden="true" />Clear</Button> : null}
+        {hasFilters ? <ButtonLink className="h-10" href="/app/orders" variant="outline"><X aria-hidden="true" />Clear</ButtonLink> : null}
       </Form>
 
       {orders.items.length ? (
@@ -81,13 +80,12 @@ export default async function OrdersPage({ searchParams }: OrdersPageProps) {
           <OrdersTable items={orders.items} timezone={orders.timezone} />
           <div className="flex flex-col gap-3 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
             <p>Showing {(orders.page - 1) * ordersPageSize + 1}–{Math.min(orders.page * ordersPageSize, orders.totalCount)} of {orders.totalCount} orders</p>
-            <div className="flex items-center gap-2"><Button disabled={orders.page <= 1} render={orders.page > 1 ? <Link href={ordersHref(orders.page - 1, query, status, channel)} /> : undefined} size="sm" variant="outline"><ChevronLeft aria-hidden="true" />Previous</Button><span className="px-2">Page {orders.page} of {orders.pageCount}</span><Button disabled={orders.page >= orders.pageCount} render={orders.page < orders.pageCount ? <Link href={ordersHref(orders.page + 1, query, status, channel)} /> : undefined} size="sm" variant="outline">Next<ChevronRight aria-hidden="true" /></Button></div>
+            <div className="flex items-center gap-2">{orders.page > 1 ? <ButtonLink href={ordersHref(orders.page - 1, query, status, channel)} size="sm" variant="outline"><ChevronLeft aria-hidden="true" />Previous</ButtonLink> : <Button disabled size="sm" variant="outline"><ChevronLeft aria-hidden="true" />Previous</Button>}<span className="px-2">Page {orders.page} of {orders.pageCount}</span>{orders.page < orders.pageCount ? <ButtonLink href={ordersHref(orders.page + 1, query, status, channel)} size="sm" variant="outline">Next<ChevronRight aria-hidden="true" /></ButtonLink> : <Button disabled size="sm" variant="outline">Next<ChevronRight aria-hidden="true" /></Button>}</div>
           </div>
         </>
       ) : (
-        <EmptyState action={hasFilters ? <Button render={<Link href="/app/orders" />} variant="outline">Clear filters</Button> : <Button render={<Link href="/app/orders/new" />}>Create an order</Button>} description={hasFilters ? "No orders match the selected filters." : "New orders will appear here when they are created manually or received from a connected channel."} icon={ClipboardList} title={hasFilters ? "No matching orders" : "No orders yet"} />
+        <EmptyState action={hasFilters ? <ButtonLink href="/app/orders" variant="outline">Clear filters</ButtonLink> : <ButtonLink href="/app/orders/new">Create an order</ButtonLink>} description={hasFilters ? "No orders match the selected filters." : "New orders will appear here when they are created manually or received from a connected channel."} icon={ClipboardList} title={hasFilters ? "No matching orders" : "No orders yet"} />
       )}
     </div>
   )
 }
-

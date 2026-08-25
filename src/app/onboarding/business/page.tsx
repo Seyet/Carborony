@@ -1,7 +1,8 @@
 import type { Metadata } from "next"
 import { redirect } from "next/navigation"
-import { Building2, Store } from "lucide-react"
+import { Building2 } from "lucide-react"
 
+import { AppLogo } from "@/components/common/app-logo"
 import {
   BusinessOnboardingForm,
   type BusinessOnboardingInitialValues,
@@ -56,7 +57,7 @@ export default async function BusinessOnboardingPage() {
     <main className="min-h-svh bg-muted/30">
       <header className="border-b bg-background">
         <div className="mx-auto flex h-16 max-w-5xl items-center gap-3 px-4 sm:px-6">
-          <span className="flex size-9 items-center justify-center rounded-lg bg-foreground text-background"><Store aria-hidden="true" className="size-4" /></span>
+          <AppLogo className="size-9" />
           <span className="font-semibold">Carborony</span>
           <span className="ml-auto text-sm text-muted-foreground">Business setup</span>
         </div>

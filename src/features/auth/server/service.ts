@@ -355,7 +355,10 @@ export async function resetPassword(
     )
   }
 
-  const { error } = await supabase.auth.updateUser({ password: input.password })
+  const { error } = await supabase.auth.updateUser({
+    data: { carborony_password_configured: true },
+    password: input.password,
+  })
 
   if (error) throwSharedProviderError("password update", error)
 

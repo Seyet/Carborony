@@ -62,15 +62,22 @@ type ExpenseCategoryRow = {
 
 type ExpenseRow = {
   amount: number
+  attachment_file_name: string | null
+  attachment_file_size: number | null
+  attachment_mime_type: string | null
+  attachment_storage_path: string | null
   business_id: string
-  category_id: string | null
+  category_id: string
   created_at: string
   created_by: string
   currency_code: string
-  description: string
+  description: string | null
   id: string
   incurred_at: string
+  name: string
+  payment_method: string
   reference: string | null
+  staff_member_id: string | null
   status: string
   updated_at: string
 }
@@ -276,24 +283,42 @@ export type Database = {
         Row: {
           business_id: string
           created_at: string
+          display_name: string
+          email: string | null
           id: string
+          invited_by: string | null
+          joined_at: string
+          phone: string | null
           role_id: string
+          status: string
           updated_at: string
           user_id: string
         }
         Insert: {
           business_id: string
           created_at?: string
+          display_name: string
+          email?: string | null
           id?: string
+          invited_by?: string | null
+          joined_at?: string
+          phone?: string | null
           role_id: string
+          status?: string
           updated_at?: string
           user_id: string
         }
         Update: {
           business_id?: string
           created_at?: string
+          display_name?: string
+          email?: string | null
           id?: string
+          invited_by?: string | null
+          joined_at?: string
+          phone?: string | null
           role_id?: string
+          status?: string
           updated_at?: string
           user_id?: string
         }
@@ -411,7 +436,12 @@ export type Database = {
       >
       expenses: DomainTable<
         ExpenseRow,
-        "amount" | "business_id" | "created_by" | "description"
+        | "amount"
+        | "business_id"
+        | "category_id"
+        | "created_by"
+        | "name"
+        | "payment_method"
       >
       inventory_levels: DomainTable<
         InventoryLevelRow,
@@ -497,6 +527,66 @@ export type Database = {
         | "product_id"
         | "selling_price"
       >
+      permissions: {
+        Row: {
+          action: string
+          code: string
+          created_at: string
+          description: string | null
+          feature: string
+          name: string
+        }
+        Insert: {
+          action: string
+          code: string
+          created_at?: string
+          description?: string | null
+          feature: string
+          name: string
+        }
+        Update: {
+          action?: string
+          code?: string
+          created_at?: string
+          description?: string | null
+          feature?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      role_permissions: {
+        Row: {
+          created_at: string
+          permission_code: string
+          role_id: string
+        }
+        Insert: {
+          created_at?: string
+          permission_code: string
+          role_id: string
+        }
+        Update: {
+          created_at?: string
+          permission_code?: string
+          role_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "role_permissions_permission_code_fkey"
+            columns: ["permission_code"]
+            isOneToOne: false
+            referencedRelation: "permissions"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "role_permissions_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "roles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       roles: {
         Row: {
           code: string
@@ -537,9 +627,186 @@ export type Database = {
         SaleRow,
         "business_id" | "created_by" | "sale_number"
       >
+      staff_invitations: {
+        Row: {
+          accepted_at: string | null
+          accepted_by: string | null
+          business_id: string
+          created_at: string
+          email: string
+          expires_at: string
+          full_name: string
+          id: string
+          invited_by: string
+          last_sent_at: string
+          phone: string | null
+          requires_password: boolean
+          revoked_at: string | null
+          role_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          business_id: string
+          created_at?: string
+          email: string
+          expires_at?: string
+          full_name: string
+          id?: string
+          invited_by: string
+          last_sent_at?: string
+          phone?: string | null
+          requires_password?: boolean
+          revoked_at?: string | null
+          role_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          business_id?: string
+          created_at?: string
+          email?: string
+          expires_at?: string
+          full_name?: string
+          id?: string
+          invited_by?: string
+          last_sent_at?: string
+          phone?: string | null
+          requires_password?: boolean
+          revoked_at?: string | null
+          role_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_invitations_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_invitations_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "roles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: Record<never, never>
     Functions: {
+      accept_staff_invitation: {
+        Args: {
+          accepted_name: string
+          accepted_phone: string | null
+          target_invitation_id: string
+        }
+        Returns: {
+          business_id: string
+          business_name: string
+          role_name: string
+        }[]
+      }
+      create_staff_invitation: {
+        Args: {
+          invited_email: string
+          invited_name: string
+          invited_phone: string | null
+          invited_role_code: string
+          target_business_id: string
+          target_invitation_id: string
+        }
+        Returns: {
+          business_name: string
+          expires_at: string
+          invitation_id: string
+          role_name: string
+        }[]
+      }
+      get_my_business_permissions: {
+        Args: { target_business_id: string }
+        Returns: { permission_code: string }[]
+      }
+      get_my_staff_invitation: {
+        Args: { target_invitation_id: string }
+        Returns: {
+          business_id: string
+          business_name: string
+          email: string
+          expires_at: string
+          full_name: string
+          invitation_id: string
+          permission_codes: string[]
+          phone: string | null
+          requires_password: boolean
+          role_code: string
+          role_name: string
+          status: string
+        }[]
+      }
+      get_staff_management: {
+        Args: { target_business_id: string }
+        Returns: {
+          email: string | null
+          expires_at: string | null
+          full_name: string
+          invited_at: string
+          is_current_user: boolean
+          joined_at: string | null
+          phone: string | null
+          record_id: string
+          record_kind: string
+          role_code: string
+          role_name: string
+          status: string
+          user_id: string | null
+        }[]
+      }
+      get_staff_role_options: {
+        Args: { target_business_id: string }
+        Returns: {
+          permission_codes: string[]
+          role_code: string
+          role_description: string | null
+          role_name: string
+        }[]
+      }
+      has_business_permission: {
+        Args: { requested_permission: string; target_business_id: string }
+        Returns: boolean
+      }
+      prepare_staff_invitation_resend: {
+        Args: { target_business_id: string; target_invitation_id: string }
+        Returns: {
+          business_name: string
+          expires_at: string
+          invitation_id: string
+          invited_email: string
+          invited_name: string
+          invited_phone: string | null
+          role_name: string
+        }[]
+      }
+      revoke_staff_invitation: {
+        Args: { target_business_id: string; target_invitation_id: string }
+        Returns: boolean
+      }
+      update_business_staff_member: {
+        Args: {
+          requested_role_code: string
+          requested_status: string
+          target_business_id: string
+          target_member_id: string
+        }
+        Returns: boolean
+      }
       get_crm_customer_profile: {
         Args: { target_business_id: string; target_customer_id: string }
         Returns: {
@@ -747,11 +1014,43 @@ export type Database = {
           sales_total: number
         }[]
       }
+      get_expense_metrics: {
+        Args: { target_business_id: string }
+        Returns: {
+          recorded_total: number
+          this_month_total: number
+          top_category_name: string | null
+          total_count: number
+        }[]
+      }
+      get_expense_staff_options: {
+        Args: { target_business_id: string }
+        Returns: {
+          full_name: string
+          role_code: string
+          role_name: string
+          staff_member_id: string
+        }[]
+      }
       get_inventory_metrics: {
         Args: {
           target_business_id: string
         }
         Returns: {
+          inventory_value: number
+          low_stock_count: number
+          out_of_stock_count: number
+          total_products: number
+          total_units: number
+        }[]
+      }
+      get_inventory_report_summary: {
+        Args: {
+          selected_category_id?: string
+          target_business_id: string
+        }
+        Returns: {
+          currency_code: string
           inventory_value: number
           low_stock_count: number
           out_of_stock_count: number
@@ -769,6 +1068,95 @@ export type Database = {
           processing_orders: number
           ready_orders: number
           total_orders: number
+        }[]
+      }
+      get_profit_report_by_date: {
+        Args: {
+          range_end: string
+          range_start: string
+          target_business_id: string
+        }
+        Returns: {
+          cogs: number
+          currency_code: string
+          expenses: number
+          gross_profit: number
+          net_profit: number
+          report_date: string
+          revenue: number
+        }[]
+      }
+      get_profit_report_summary: {
+        Args: {
+          range_end: string
+          range_start: string
+          target_business_id: string
+        }
+        Returns: {
+          cogs: number
+          currency_code: string
+          expenses: number
+          gross_profit: number
+          net_profit: number
+          revenue: number
+        }[]
+      }
+      get_report_filter_options: {
+        Args: { target_business_id: string }
+        Returns: {
+          option_detail: string | null
+          option_group: string
+          option_id: string
+          option_label: string
+          option_order: number
+        }[]
+      }
+      get_sales_report_summary: {
+        Args: {
+          range_end: string
+          range_start: string
+          selected_category_id?: string
+          selected_payment_method?: string
+          selected_product_id?: string
+          selected_staff_id?: string
+          target_business_id: string
+        }
+        Returns: {
+          average_sale: number
+          cogs: number
+          currency_code: string
+          gross_profit: number
+          revenue: number
+          transaction_count: number
+          units_sold: number
+        }[]
+      }
+      get_expense_report_by_category: {
+        Args: {
+          range_end: string
+          range_start: string
+          target_business_id: string
+        }
+        Returns: {
+          category_id: string
+          category_name: string
+          currency_code: string
+          expense_count: number
+          percentage_of_total: number
+          total_amount: number
+        }[]
+      }
+      get_expense_report_by_date: {
+        Args: {
+          range_end: string
+          range_start: string
+          target_business_id: string
+        }
+        Returns: {
+          currency_code: string
+          expense_count: number
+          expense_date: string
+          total_amount: number
         }[]
       }
       get_sales_history: {
@@ -834,6 +1222,27 @@ export type Database = {
           quantity_delta: number
         }[]
       }
+      record_business_expense: {
+        Args: {
+          attachment_file_name: string | null
+          attachment_file_size: number | null
+          attachment_mime_type: string | null
+          attachment_storage_path: string | null
+          expense_amount: number
+          expense_category_id: string
+          expense_date: string
+          expense_description: string | null
+          expense_name: string
+          expense_payment_method: string
+          expense_staff_member_id: string | null
+          target_business_id: string
+          target_expense_id: string | null
+        }
+        Returns: {
+          expense_id: string
+          was_created: boolean
+        }[]
+      }
       search_inventory_movements: {
         Args: {
           result_limit?: number
@@ -855,6 +1264,38 @@ export type Database = {
           quantity_delta: number
           total_count: number
           unit_cost: number | null
+          variant_name: string | null
+        }[]
+      }
+      search_inventory_movement_report: {
+        Args: {
+          range_end: string
+          range_start: string
+          result_limit?: number
+          result_offset?: number
+          selected_category_id?: string
+          selected_movement_type?: string
+          selected_product_id?: string
+          target_business_id: string
+        }
+        Returns: {
+          category_id: string | null
+          category_name: string | null
+          currency_code: string
+          location_name: string
+          movement_date: string
+          movement_id: string
+          movement_type: string
+          movement_value: number
+          note: string | null
+          occurred_at: string
+          product_id: string
+          product_name: string
+          product_sku: string | null
+          quantity_delta: number
+          staff_name: string
+          total_count: number
+          unit_cost: number
           variant_name: string | null
         }[]
       }
@@ -880,6 +1321,65 @@ export type Database = {
           total_count: number
           tracks_inventory: boolean
           variants: Json
+        }[]
+      }
+      search_inventory_stock_report: {
+        Args: {
+          result_limit?: number
+          result_offset?: number
+          selected_category_id?: string
+          target_business_id: string
+        }
+        Returns: {
+          category_id: string | null
+          category_name: string | null
+          currency_code: string
+          product_id: string
+          product_name: string
+          product_sku: string | null
+          reorder_level: number
+          stock_quantity: number
+          stock_status: string
+          stock_value: number
+          total_count: number
+          tracks_inventory: boolean
+          unit_cost: number
+        }[]
+      }
+      search_sales_report: {
+        Args: {
+          range_end: string
+          range_start: string
+          result_limit?: number
+          result_offset?: number
+          selected_category_id?: string
+          selected_payment_method?: string
+          selected_product_id?: string
+          selected_staff_id?: string
+          target_business_id: string
+        }
+        Returns: {
+          category_id: string | null
+          category_name: string | null
+          cogs: number
+          currency_code: string
+          customer_name: string
+          discount_amount: number
+          gross_profit: number
+          payment_method: string
+          product_id: string | null
+          product_name: string
+          quantity: number
+          revenue: number
+          sale_date: string
+          sale_id: string
+          sale_item_id: string
+          sale_number: string
+          staff_id: string
+          staff_name: string
+          total_count: number
+          unit_price: number
+          variant_name: string | null
         }[]
       }
       search_sales_history: {
@@ -923,6 +1423,36 @@ export type Database = {
           payment_status: string
           placed_at: string
           total_amount: number
+          total_count: number
+        }[]
+      }
+      search_business_expenses: {
+        Args: {
+          result_limit?: number
+          result_offset?: number
+          search_query?: string
+          selected_category_id?: string
+          selected_payment_method?: string
+          target_business_id: string
+        }
+        Returns: {
+          amount: number
+          attachment_file_name: string | null
+          attachment_file_size: number | null
+          attachment_mime_type: string | null
+          attachment_storage_path: string | null
+          category_id: string
+          category_name: string
+          created_at: string
+          currency_code: string
+          description: string | null
+          expense_date: string
+          expense_id: string
+          expense_name: string
+          payment_method: string
+          staff_member_id: string | null
+          staff_member_name: string | null
+          status: string
           total_count: number
         }[]
       }

@@ -1,6 +1,8 @@
 import type { Metadata } from "next"
 import Link from "next/link"
-import { Building2, CheckCircle2, ShieldCheck, Store } from "lucide-react"
+import { Building2, CheckCircle2, ShieldCheck } from "lucide-react"
+
+import { AppLogo } from "@/components/common/app-logo"
 
 export const metadata: Metadata = {
   title: {
@@ -21,9 +23,7 @@ export default function AuthLayout({ children }: LayoutProps<"/">) {
           className="relative z-10 inline-flex w-fit items-center gap-3 font-semibold tracking-tight"
           href="/"
         >
-          <span className="flex size-10 items-center justify-center rounded-xl bg-background text-foreground">
-            <Store aria-hidden="true" className="size-5" />
-          </span>
+          <AppLogo className="size-10" />
           <span className="text-xl">Carborony</span>
         </Link>
 
@@ -60,9 +60,7 @@ export default function AuthLayout({ children }: LayoutProps<"/">) {
           className="inline-flex w-fit items-center gap-2 font-semibold tracking-tight lg:hidden"
           href="/"
         >
-          <span className="flex size-9 items-center justify-center rounded-lg bg-foreground text-background">
-            <Store aria-hidden="true" className="size-4" />
-          </span>
+          <AppLogo className="size-9" />
           Carborony
         </Link>
         <div className="flex flex-1 items-center justify-center py-8">

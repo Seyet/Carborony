@@ -15,5 +15,6 @@ export const config = {
     "/verify-otp",
     "/forgot-password",
     "/reset-password",
+    "/staff/invitations/:path*",
   ],
 }

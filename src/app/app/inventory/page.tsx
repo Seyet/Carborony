@@ -1,6 +1,5 @@
 import type { Metadata } from "next"
 import Form from "next/form"
-import Link from "next/link"
 import {
   Boxes,
   ChevronLeft,
@@ -12,7 +11,7 @@ import {
 } from "lucide-react"
 
 import { EmptyState } from "@/components/common"
-import { Button } from "@/components/ui/button"
+import { Button, ButtonLink } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { InventoryHistoryTable } from "@/features/inventory/inventory-history-table"
 import { InventoryMetricCards } from "@/features/inventory/inventory-metrics"
@@ -115,14 +114,14 @@ export default async function InventoryPage({ searchParams }: InventoryPageProps
           <h1 className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">Inventory</h1>
           <p className="mt-1 text-sm text-muted-foreground">Monitor stock levels, inventory value, and every stock movement.</p>
         </div>
-        <Button render={<Link href="/app/catalogue/new" />}><PackagePlus aria-hidden="true" />Add product</Button>
+        <ButtonLink href="/app/catalogue/new"><PackagePlus aria-hidden="true" />Add product</ButtonLink>
       </header>
 
       <InventoryMetricCards currencyCode={inventory.currencyCode} metrics={inventory.metrics} />
 
       <div className="flex w-fit rounded-lg bg-muted p-[3px]">
-        <Button aria-current={view === "stock" ? "page" : undefined} className="h-8" render={<Link href="/app/inventory" />} size="sm" variant={view === "stock" ? "secondary" : "ghost"}><Boxes aria-hidden="true" />Stock</Button>
-        <Button aria-current={view === "history" ? "page" : undefined} className="h-8" render={<Link href="/app/inventory?view=history" />} size="sm" variant={view === "history" ? "secondary" : "ghost"}><History aria-hidden="true" />History</Button>
+        <ButtonLink aria-current={view === "stock" ? "page" : undefined} className="h-8" href="/app/inventory" size="sm" variant={view === "stock" ? "secondary" : "ghost"}><Boxes aria-hidden="true" />Stock</ButtonLink>
+        <ButtonLink aria-current={view === "history" ? "page" : undefined} className="h-8" href="/app/inventory?view=history" size="sm" variant={view === "history" ? "secondary" : "ghost"}><History aria-hidden="true" />History</ButtonLink>
       </div>
 
       <Form action="/app/inventory" className="flex flex-col gap-2 lg:flex-row">
@@ -155,7 +154,7 @@ export default async function InventoryPage({ searchParams }: InventoryPageProps
           </select>
         )}
         <Button className="h-10" type="submit"><Search aria-hidden="true" />Filter</Button>
-        {hasFilters ? <Button className="h-10" render={<Link href={view === "history" ? "/app/inventory?view=history" : "/app/inventory"} />} type="button" variant="outline"><X aria-hidden="true" />Clear</Button> : null}
+        {hasFilters ? <ButtonLink className="h-10" href={view === "history" ? "/app/inventory?view=history" : "/app/inventory"} variant="outline"><X aria-hidden="true" />Clear</ButtonLink> : null}
       </Form>
 
       {itemCount ? (
@@ -166,17 +165,21 @@ export default async function InventoryPage({ searchParams }: InventoryPageProps
           <div className="flex flex-col gap-3 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
             <p>Showing {(inventory.page - 1) * inventoryPageSize + 1}–{Math.min(inventory.page * inventoryPageSize, inventory.totalCount)} of {inventory.totalCount} {view === "stock" ? "products" : "movements"}</p>
             <div className="flex items-center gap-2">
-              <Button disabled={inventory.page <= 1} render={inventory.page > 1 ? <Link href={previousHref} /> : undefined} size="sm" variant="outline"><ChevronLeft aria-hidden="true" />Previous</Button>
+              {inventory.page > 1
+                ? <ButtonLink href={previousHref} size="sm" variant="outline"><ChevronLeft aria-hidden="true" />Previous</ButtonLink>
+                : <Button disabled size="sm" variant="outline"><ChevronLeft aria-hidden="true" />Previous</Button>}
               <span className="px-2">Page {inventory.page} of {inventory.pageCount}</span>
-              <Button disabled={inventory.page >= inventory.pageCount} render={inventory.page < inventory.pageCount ? <Link href={nextHref} /> : undefined} size="sm" variant="outline">Next<ChevronRight aria-hidden="true" /></Button>
+              {inventory.page < inventory.pageCount
+                ? <ButtonLink href={nextHref} size="sm" variant="outline">Next<ChevronRight aria-hidden="true" /></ButtonLink>
+                : <Button disabled size="sm" variant="outline">Next<ChevronRight aria-hidden="true" /></Button>}
             </div>
           </div>
         </>
       ) : (
         <EmptyState
           action={hasFilters
-            ? <Button render={<Link href={view === "history" ? "/app/inventory?view=history" : "/app/inventory"} />} variant="outline">Clear filters</Button>
-            : view === "stock" ? <Button render={<Link href="/app/catalogue/new" />}>Add a product</Button> : undefined}
+            ? <ButtonLink href={view === "history" ? "/app/inventory?view=history" : "/app/inventory"} variant="outline">Clear filters</ButtonLink>
+            : view === "stock" ? <ButtonLink href="/app/catalogue/new">Add a product</ButtonLink> : undefined}
           description={hasFilters
             ? "No inventory records match the selected filters."
             : view === "stock" ? "Products added to the catalogue will appear here." : "Stock movements will appear after inventory operations or sales."}
@@ -187,4 +190,3 @@ export default async function InventoryPage({ searchParams }: InventoryPageProps
     </div>
   )
 }
-

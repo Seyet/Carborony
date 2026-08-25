@@ -4,19 +4,18 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
   ChevronDown,
-  CircleHelp,
-  ExternalLink,
-  Layers3,
   LogOut,
 } from "lucide-react"
 import { useState } from "react"
 
+import { AppLogo } from "@/components/common/app-logo"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { LogoutConfirmationDialog } from "@/features/auth/components/logout-confirmation-dialog"
 import { cn } from "@/lib/utils"
 import {
+  canAccessNavigationItem,
   isNavigationItemActive,
   primaryNavigation,
 } from "@/features/navigation/navigation-config"
@@ -28,13 +27,14 @@ export function AppSidebar({ business }: { business: ShellBusiness }) {
   const marketingIsActive = pathname.startsWith("/app/marketing")
   const [marketingIsOpen, setMarketingIsOpen] = useState(marketingIsActive)
   const [logoutIsOpen, setLogoutIsOpen] = useState(false)
+  const accessibleNavigation = primaryNavigation.filter((item) =>
+    canAccessNavigationItem(item, business.permissions),
+  )
 
   return (
     <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground lg:flex">
       <div className="flex h-16 shrink-0 items-center gap-3 border-b border-sidebar-border px-5">
-        <span className="flex size-9 items-center justify-center rounded-xl bg-sidebar-primary text-sidebar-primary-foreground shadow-sm">
-          <Layers3 className="size-5" aria-hidden="true" />
-        </span>
+        <AppLogo className="size-9" />
         <span className="min-w-0">
           <span className="block truncate text-base font-semibold tracking-tight">
             Carborony
@@ -74,7 +74,7 @@ export function AppSidebar({ business }: { business: ShellBusiness }) {
           Workspace
         </p>
         <ul className="space-y-1">
-          {primaryNavigation.map((item) => {
+          {accessibleNavigation.map((item) => {
             const Icon = item.icon
             const isActive = isNavigationItemActive(pathname, item.href)
             const hasChildren = Boolean(item.children?.length)
@@ -161,7 +161,7 @@ export function AppSidebar({ business }: { business: ShellBusiness }) {
 
       <div className="shrink-0 p-3 pt-0">
         <Separator className="mb-3" />
-        <Link
+        {/* <Link
           href="/app/settings"
           className="group flex items-center gap-3 rounded-xl px-2.5 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
         >
@@ -178,7 +178,7 @@ export function AppSidebar({ business }: { business: ShellBusiness }) {
             className="size-3.5 opacity-0 transition-opacity group-hover:opacity-100"
             aria-hidden="true"
           />
-        </Link>
+        </Link> */}
         <Button
           variant="ghost"
           className="mt-1 h-auto w-full justify-start gap-3 px-2.5 py-2.5 text-left text-destructive hover:bg-destructive/10 hover:text-destructive"

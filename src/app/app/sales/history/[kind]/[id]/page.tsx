@@ -4,7 +4,7 @@ import { notFound } from "next/navigation"
 import { ArrowLeft } from "lucide-react"
 import { z } from "zod"
 
-import { Button } from "@/components/ui/button"
+import { ButtonLink } from "@/components/ui/button"
 import { getTransactionDocument } from "@/features/sales/documents/server/get-transaction-document"
 import type { TransactionDocumentData } from "@/features/sales/documents/types"
 import { TransactionDetails } from "@/features/sales/history/transaction-details"
@@ -46,7 +46,7 @@ export default async function TransactionDetailsPage({ params }: TransactionDeta
           <p className="mt-1 text-sm text-muted-foreground">{transaction.number}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button render={<Link href="/app/sales/history" />} variant="outline"><ArrowLeft aria-hidden="true" />Sales history</Button>
+          <ButtonLink href="/app/sales/history" variant="outline"><ArrowLeft aria-hidden="true" />Sales history</ButtonLink>
           <TransactionDocumentButton documentNumber={transaction.number} id={transaction.id} kind={transaction.kind} />
           {transaction.kind === "invoice" && transaction.paymentStatus !== "paid" && transaction.paymentStatus !== "refunded" && transaction.status !== "cancelled" ? <MarkInvoicePaidButton currentPaymentMethod={transaction.paymentMethod} invoiceId={transaction.id} invoiceNumber={transaction.number} /> : null}
         </div>

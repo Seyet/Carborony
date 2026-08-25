@@ -9,13 +9,13 @@ import {
   Check,
   ChevronDown,
   CircleHelp,
-  Layers3,
   LogOut,
   Search,
   Settings,
   UserRound,
 } from "lucide-react"
 
+import { AppLogo } from "@/components/common/app-logo"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -275,6 +275,7 @@ function UserMenu({
           </DropdownMenuGroup>
           <DropdownMenuSeparator />
           <DropdownMenuItem
+            nativeButton
             variant="destructive"
             render={
               <button
@@ -316,9 +317,7 @@ export function TopNavigation({
           className="mr-auto flex shrink-0 items-center gap-2 lg:hidden"
           aria-label="Carborony dashboard"
         >
-          <span className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <Layers3 className="size-4" aria-hidden="true" />
-          </span>
+          <AppLogo className="size-8" />
           <span className="hidden font-semibold tracking-tight sm:block md:hidden">
             Carborony
           </span>
@@ -331,13 +330,9 @@ export function TopNavigation({
           <p className="truncate text-sm font-semibold">{pageTitle}</p>
         </div>
 
-        <div className="hidden w-full max-w-xl flex-1 md:block">
-          <SearchField />
-        </div>
-
         <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-1.5">
           <div className="hidden xl:block">
-            <QuickActionsDialog />
+            <QuickActionsDialog permissions={business.permissions} />
           </div>
           <BusinessSwitcher business={business} />
           <MobileSearch />

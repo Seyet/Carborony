@@ -33,3 +33,17 @@ export function getSupabaseEnvironment() {
 
   return { anonKey, url }
 }
+
+export function getSupabaseAdminEnvironment() {
+  const { url } = getSupabaseEnvironment()
+  const serviceRoleKey = process.env.SUPABASE_SECRET_KEY
+    ?? process.env.SUPABASE_SERVICE_ROLE_KEY
+
+  if (!serviceRoleKey) {
+    throw new Error(
+      "Supabase staff invitations are not configured. Set SUPABASE_SECRET_KEY or SUPABASE_SERVICE_ROLE_KEY.",
+    )
+  }
+
+  return { serviceRoleKey, url }
+}

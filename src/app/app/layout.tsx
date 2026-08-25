@@ -26,6 +26,12 @@ export default async function AuthenticatedAppLayout({
     requireUser(),
     getCurrentBusinessOrNull(),
   ])
+  if (
+    user.invited_at
+    && user.user_metadata?.carborony_password_configured !== true
+  ) {
+    redirect("/reset-password")
+  }
   if (!currentBusiness?.onboardingCompletedAt) redirect("/onboarding/business")
   const metadataName = user.user_metadata?.full_name
   const email = user.email ?? "Signed-in user"
@@ -39,6 +45,7 @@ export default async function AuthenticatedAppLayout({
       business={{
         name: currentBusiness.name,
         initials: getInitials(currentBusiness.name),
+        permissions: currentBusiness.permissions,
         roleName: currentBusiness.roleName,
       }}
       user={{

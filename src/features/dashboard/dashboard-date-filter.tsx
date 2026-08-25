@@ -1,7 +1,6 @@
-import Link from "next/link"
 import { CalendarDays } from "lucide-react"
 
-import { Button } from "@/components/ui/button"
+import { Button, ButtonLink } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 
 type DashboardDateFilterProps = {
@@ -75,13 +74,9 @@ export function DashboardDateFilter({
         Apply
       </Button>
       {!isToday ? (
-        <Button
-          className="h-9"
-          render={<Link href="/app/dashboard" />}
-          variant="ghost"
-        >
+        <ButtonLink className="h-9" href="/app/dashboard" variant="ghost">
           Today
-        </Button>
+        </ButtonLink>
       ) : null}
     </form>
   )

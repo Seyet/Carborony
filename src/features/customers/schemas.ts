@@ -2,23 +2,30 @@ import { z } from "zod"
 
 import { customerSegments } from "./types"
 
-const optionalEmail = z.string().trim().max(254, "Email must be 254 characters or fewer.")
+const emptyableString = z
+  .union([z.string(), z.null(), z.undefined()])
+  .transform((value) => (typeof value === "string" ? value.trim() : ""))
+
+const optionalEmail = emptyableString
+  .pipe(z.string().max(254, "Email must be 254 characters or fewer."))
   .refine((value) => !value || z.email().safeParse(value).success, "Enter a valid email address.")
   .transform((value) => value || null)
 
-const optionalPhone = z.string().trim().max(32, "Phone number must be 32 characters or fewer.")
+const optionalPhone = emptyableString
+  .pipe(z.string().max(32, "Phone number must be 32 characters or fewer."))
   .refine((value) => !value || (
     value.length >= 7 && /^[0-9+(). -]+$/.test(value)
   ), "Enter a valid phone number.")
   .transform((value) => value || null)
 
-const optionalText = (maximum: number, message: string) => z.string().trim()
-  .max(maximum, message).transform((value) => value || null)
+const optionalText = (maximum: number, message: string) => emptyableString
+  .pipe(z.string().max(maximum, message))
+  .transform((value) => value || null)
 
 export const saveCustomerSchema = z.object({
   address: optionalText(500, "Address must be 500 characters or fewer.")
     .refine((value) => value === null || value.length >= 5, "Address must be at least 5 characters."),
-  birthday: z.string().trim().refine((value) => {
+  birthday: emptyableString.refine((value) => {
     if (!value) return true
     const birthday = new Date(`${value}T00:00:00.000Z`)
     return !Number.isNaN(birthday.getTime())

@@ -1,10 +1,9 @@
 import type { Metadata } from "next"
-import Link from "next/link"
 import { notFound } from "next/navigation"
 import { ArrowLeft } from "lucide-react"
 import { z } from "zod"
 
-import { Button } from "@/components/ui/button"
+import { ButtonLink } from "@/components/ui/button"
 import { CatalogueSetupRequired } from "@/features/catalogue/catalogue-setup-required"
 import { ProductForm } from "@/features/catalogue/product-form"
 import {
@@ -43,7 +42,7 @@ export default async function EditProductPage({ params }: EditProductPageProps) 
   return (
     <div className="space-y-6">
       <header className="flex items-start gap-3">
-        <Button aria-label="Back to product details" render={<Link href={`/app/catalogue/${data.id}`} />} size="icon" variant="outline"><ArrowLeft aria-hidden="true" /></Button>
+        <ButtonLink aria-label="Back to product details" href={`/app/catalogue/${data.id}`} size="icon" variant="outline"><ArrowLeft aria-hidden="true" /></ButtonLink>
         <div><p className="text-xs text-muted-foreground">Catalogue / {data.name}</p><h1 className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">Edit product</h1><p className="mt-1 text-sm text-muted-foreground">Update product information, variants, stock, and media.</p></div>
       </header>
       <ProductForm categories={options.categories} currencyCode={options.currencyCode} initialProduct={data} />

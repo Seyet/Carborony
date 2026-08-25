@@ -1,11 +1,10 @@
 "use client"
 
 import { type ChangeEvent, type FormEvent, useMemo, useState } from "react"
-import Link from "next/link"
 import { ImagePlus, LoaderCircle, Plus, Save, Trash2, Upload, Video } from "lucide-react"
 import { toast } from "sonner"
 
-import { Button } from "@/components/ui/button"
+import { Button, ButtonLink } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -444,7 +443,7 @@ export function ProductForm({
       </Card>
 
       <div className="sticky bottom-16 z-10 flex items-center justify-end gap-3 rounded-xl border bg-background/95 p-3 shadow-lg backdrop-blur md:bottom-3">
-        <Button render={<Link href={initialProduct ? `/app/catalogue/${initialProduct.id}` : "/app/catalogue"} />} type="button" variant="outline">Cancel</Button>
+        <ButtonLink href={initialProduct ? `/app/catalogue/${initialProduct.id}` : "/app/catalogue"} variant="outline">Cancel</ButtonLink>
         <Button className="min-w-40" disabled={!validation.success || Boolean(mediaError) || pending} type="submit">
           {pending ? <><LoaderCircle aria-hidden="true" className="animate-spin" />{uploadLabel || "Saving product…"}</> : <><Save aria-hidden="true" />{initialProduct ? "Save changes" : "Create product"}</>}
         </Button>

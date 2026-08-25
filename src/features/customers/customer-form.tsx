@@ -2,11 +2,10 @@
 
 import { useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
-import Link from "next/link"
 import { LoaderCircle, Save } from "lucide-react"
 import { toast } from "sonner"
 
-import { Button } from "@/components/ui/button"
+import { Button, ButtonLink } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -117,7 +116,7 @@ export function CustomerForm({ customer }: { customer?: CustomerProfile }) {
         <label className="grid gap-2 text-sm font-medium">Segment<select className="h-10 rounded-lg border border-input bg-background px-3 text-sm" onChange={(event) => update("segment", event.currentTarget.value)} value={draft.segment}>{customerSegments.map((segment) => <option key={segment} value={segment}>{customerSegmentLabels[segment]}</option>)}</select></label>
         <label className="grid gap-2 text-sm font-medium sm:col-span-2">Tags <span className="font-normal text-muted-foreground">(optional)</span><Input aria-invalid={Boolean(tagsError) || undefined} maxLength={820} onChange={(event) => update("tags", event.currentTarget.value)} placeholder="retail, wholesale, Lagos" value={draft.tags} /><span className={tagsError ? "text-xs text-destructive" : "text-xs font-normal text-muted-foreground"}>{tagsError ?? "Separate tags with commas. Up to 20 tags."}</span></label>
         <label className="grid gap-2 text-sm font-medium sm:col-span-2">Notes <span className="font-normal text-muted-foreground">(optional)</span><Textarea aria-invalid={Boolean(notesError) || undefined} maxLength={2000} onChange={(event) => update("notes", event.currentTarget.value)} placeholder="Preferences, context, or relationship notes" value={draft.notes} />{notesError ? <span className="text-xs text-destructive">{notesError}</span> : null}</label>
-        <div className="flex flex-col-reverse gap-2 pt-2 sm:col-span-2 sm:flex-row sm:justify-end"><Button render={<Link href={customer ? `/app/customers/${customer.id}` : "/app/customers"} />} type="button" variant="outline">Cancel</Button><Button disabled={pending || !validation.success} onClick={submit} type="button">{pending ? <LoaderCircle aria-hidden="true" className="animate-spin" /> : <Save aria-hidden="true" />}{pending ? "Saving…" : customer ? "Save changes" : "Create customer"}</Button></div>
+        <div className="flex flex-col-reverse gap-2 pt-2 sm:col-span-2 sm:flex-row sm:justify-end"><ButtonLink href={customer ? `/app/customers/${customer.id}` : "/app/customers"} variant="outline">Cancel</ButtonLink><Button disabled={pending || !validation.success} onClick={submit} type="button">{pending ? <LoaderCircle aria-hidden="true" className="animate-spin" /> : <Save aria-hidden="true" />}{pending ? "Saving…" : customer ? "Save changes" : "Create customer"}</Button></div>
       </CardContent>
     </Card>
   )

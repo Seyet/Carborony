@@ -3,7 +3,7 @@ import Link from "next/link"
 import { Eye, ImageIcon, Shapes } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import { ButtonLink } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import {
   Table,
@@ -81,7 +81,7 @@ export function CatalogueTable({
                   <TableCell><Badge className="capitalize" variant={product.status === "active" ? "default" : "secondary"}>{product.status}</Badge></TableCell>
                   <TableCell className="text-muted-foreground"><span className="inline-flex items-center gap-1.5"><Shapes aria-hidden="true" className="size-4" />{product.variantCount}</span></TableCell>
                   <TableCell className="pr-4 text-right sm:pr-6">
-                    <Button render={<Link href={`/app/catalogue/${product.id}`} />} size="sm" variant="outline"><Eye aria-hidden="true" />View</Button>
+                    <ButtonLink href={`/app/catalogue/${product.id}`} size="sm" variant="outline"><Eye aria-hidden="true" />View</ButtonLink>
                   </TableCell>
                 </TableRow>
               )

@@ -1,5 +1,4 @@
 import Image from "next/image"
-import Link from "next/link"
 import {
   Boxes,
   CircleDollarSign,
@@ -11,7 +10,7 @@ import {
 } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import { ButtonLink } from "@/components/ui/button"
 import {
   Card,
   CardContent,
@@ -169,9 +168,9 @@ export function ProductDetails({
               </div>
             </dl>
 
-            <Button className="mt-6 w-full sm:w-fit" render={<Link href={`/app/catalogue/${product.id}/edit`} />}>
+            <ButtonLink className="mt-6 w-full sm:w-fit" href={`/app/catalogue/${product.id}/edit`}>
               <Pencil aria-hidden="true" />Edit product
-            </Button>
+            </ButtonLink>
           </div>
         </CardContent>
       </Card>

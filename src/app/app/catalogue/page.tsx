@@ -1,11 +1,10 @@
 import type { Metadata } from "next"
 import Form from "next/form"
-import Link from "next/link"
 import { ChevronLeft, ChevronRight, PackageOpen, Plus, Search, X } from "lucide-react"
 import { z } from "zod"
 
 import { EmptyState } from "@/components/common"
-import { Button } from "@/components/ui/button"
+import { Button, ButtonLink } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { CatalogueSetupRequired } from "@/features/catalogue/catalogue-setup-required"
 import { CatalogueTable } from "@/features/catalogue/catalogue-table"
@@ -81,7 +80,7 @@ export default async function CataloguePage({ searchParams }: CataloguePageProps
         </div>
         <div className="flex flex-wrap gap-2">
           <CategoryManager categories={catalogue.categories} />
-          <Button render={<Link href="/app/catalogue/new" />}><Plus aria-hidden="true" />Add product</Button>
+          <ButtonLink href="/app/catalogue/new"><Plus aria-hidden="true" />Add product</ButtonLink>
         </div>
       </header>
 
@@ -106,7 +105,7 @@ export default async function CataloguePage({ searchParams }: CataloguePageProps
           })}
         </select>
         <Button className="h-10" type="submit"><Search aria-hidden="true" />Filter</Button>
-        {hasFilters ? <Button className="h-10" render={<Link href="/app/catalogue" />} variant="outline"><X aria-hidden="true" />Clear</Button> : null}
+        {hasFilters ? <ButtonLink className="h-10" href="/app/catalogue" variant="outline"><X aria-hidden="true" />Clear</ButtonLink> : null}
       </Form>
 
       {catalogue.items.length ? (
@@ -115,17 +114,25 @@ export default async function CataloguePage({ searchParams }: CataloguePageProps
           <div className="flex flex-col gap-3 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
             <p>Showing {(catalogue.page - 1) * cataloguePageSize + 1}–{Math.min(catalogue.page * cataloguePageSize, catalogue.totalCount)} of {catalogue.totalCount} products</p>
             <div className="flex items-center gap-2">
-              <Button disabled={catalogue.page <= 1} render={catalogue.page > 1 ? <Link href={catalogueHref(catalogue.page - 1, filters)} /> : undefined} size="sm" variant="outline"><ChevronLeft aria-hidden="true" />Previous</Button>
+              {catalogue.page > 1 ? (
+                <ButtonLink href={catalogueHref(catalogue.page - 1, filters)} size="sm" variant="outline"><ChevronLeft aria-hidden="true" />Previous</ButtonLink>
+              ) : (
+                <Button disabled size="sm" variant="outline"><ChevronLeft aria-hidden="true" />Previous</Button>
+              )}
               <span className="px-2">Page {catalogue.page} of {catalogue.pageCount}</span>
-              <Button disabled={catalogue.page >= catalogue.pageCount} render={catalogue.page < catalogue.pageCount ? <Link href={catalogueHref(catalogue.page + 1, filters)} /> : undefined} size="sm" variant="outline">Next<ChevronRight aria-hidden="true" /></Button>
+              {catalogue.page < catalogue.pageCount ? (
+                <ButtonLink href={catalogueHref(catalogue.page + 1, filters)} size="sm" variant="outline">Next<ChevronRight aria-hidden="true" /></ButtonLink>
+              ) : (
+                <Button disabled size="sm" variant="outline">Next<ChevronRight aria-hidden="true" /></Button>
+              )}
             </div>
           </div>
         </>
       ) : (
         <EmptyState
           action={hasFilters
-            ? <Button render={<Link href="/app/catalogue" />} variant="outline">Clear filters</Button>
-            : <Button render={<Link href="/app/catalogue/new" />}><Plus aria-hidden="true" />Add your first product</Button>}
+            ? <ButtonLink href="/app/catalogue" variant="outline">Clear filters</ButtonLink>
+            : <ButtonLink href="/app/catalogue/new"><Plus aria-hidden="true" />Add your first product</ButtonLink>}
           description={hasFilters ? "Try changing your search or catalogue filters." : "Create products with prices, stock, variants, images, and videos."}
           icon={PackageOpen}
           title={hasFilters ? "No matching products" : "Your catalogue is empty"}

@@ -2,12 +2,11 @@
 
 import { useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
-import Link from "next/link"
 import { LoaderCircle, Minus, Plus, ShoppingCart, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import { Button, ButtonLink } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
@@ -182,7 +181,7 @@ export function ManualOrderForm({ catalog }: { catalog: PosCatalog }) {
           <label className="grid gap-2 text-sm font-medium">Shipping<Input aria-invalid={!shippingValid || undefined} min="0" onChange={(event) => setShipping(event.currentTarget.value)} step="0.01" type="number" value={shipping} />{!shippingValid ? <span className="text-xs text-destructive">Enter a valid shipping amount.</span> : null}</label>
           <Separator />
           <div className="space-y-2 text-sm"><div className="flex justify-between text-muted-foreground"><span>Subtotal</span><span>{money.format(subtotal)}</span></div><div className="flex justify-between text-muted-foreground"><span>Discount</span><span>−{money.format(discountValid ? discountAmount : 0)}</span></div><div className="flex justify-between text-muted-foreground"><span>Shipping</span><span>{money.format(shippingValid ? shippingAmount : 0)}</span></div><div className="flex justify-between border-t pt-3 text-base font-semibold"><span>Total</span><span>{money.format(total)}</span></div></div>
-          <div className="grid gap-2"><Button className="w-full" disabled={pending || !validation.success} onClick={submit} size="lg" type="button">{pending ? <><LoaderCircle aria-hidden="true" className="animate-spin" />Creating order…</> : "Create order"}</Button><Button render={<Link href="/app/orders" />} type="button" variant="outline">Cancel</Button></div>
+          <div className="grid gap-2"><Button className="w-full" disabled={pending || !validation.success} onClick={submit} size="lg" type="button">{pending ? <><LoaderCircle aria-hidden="true" className="animate-spin" />Creating order…</> : "Create order"}</Button><ButtonLink href="/app/orders" variant="outline">Cancel</ButtonLink></div>
         </CardContent>
       </Card>
     </div>

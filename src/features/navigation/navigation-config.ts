@@ -12,6 +12,7 @@ import {
   Settings,
   ShoppingCart,
   Sparkles,
+  Store,
   Users,
   UserRoundCog,
 } from "lucide-react"
@@ -26,6 +27,7 @@ export type NavigationItem = {
   title: string
   href: string
   icon: LucideIcon
+  permission?: string
   children?: readonly NavigationChild[]
 }
 
@@ -57,59 +59,83 @@ export const primaryNavigation: readonly NavigationItem[] = [
     title: "Dashboard",
     href: "/app/dashboard",
     icon: LayoutDashboard,
+    permission: "dashboard.view",
   },
   {
     title: "Sales",
     href: "/app/sales",
     icon: ShoppingCart,
+    permission: "sales.view",
   },
   {
     title: "Catalogue",
     href: "/app/catalogue",
     icon: Package,
+    permission: "products.view",
   },
   {
     title: "Orders",
     href: "/app/orders",
     icon: ClipboardList,
+    permission: "sales.view",
   },
   {
     title: "Inventory",
     href: "/app/inventory",
     icon: Boxes,
+    permission: "inventory.view",
   },
   {
     title: "Customers",
     href: "/app/customers",
     icon: Users,
+    permission: "customers.view",
   },
   {
     title: "Expenses",
     href: "/app/expenses",
     icon: ReceiptText,
+    permission: "expenses.view",
   },
   {
     title: "Reports",
     href: "/app/reports",
     icon: BarChart3,
+    permission: "reports.view",
+  },
+  {
+    title: "My Website",
+    href: "/app/website",
+    icon: Store,
+    permission: "settings.view",
   },
   {
     title: "Marketing",
     href: "/app/marketing",
     icon: Megaphone,
+    permission: "settings.view",
     children: marketingNavigation,
   },
   {
     title: "Staff",
     href: "/app/staff",
     icon: UserRoundCog,
+    permission: "staff.view",
   },
   {
     title: "Settings",
     href: "/app/settings",
     icon: Settings,
+    permission: "settings.view",
   },
 ]
+
+export function canAccessNavigationItem(
+  item: NavigationItem,
+  permissions: readonly string[],
+) {
+  return !item.permission || permissions.includes(item.permission)
+}
 
 export function isNavigationItemActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`)

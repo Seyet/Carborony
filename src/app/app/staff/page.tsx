@@ -1,17 +1,26 @@
 import type { Metadata } from "next"
-import { UserRoundCog } from "lucide-react"
 
-import { FeaturePlaceholder } from "@/components/layout/feature-placeholder"
+import { StaffAccessDenied } from "@/features/staff/staff-access-denied"
+import { StaffManagement } from "@/features/staff/staff-management"
+import { StaffSetupRequired } from "@/features/staff/staff-setup-required"
+import {
+  getStaffPageData,
+  StaffAccessDeniedError,
+  StaffSetupRequiredError,
+} from "@/features/staff/server/get-staff"
 
 export const metadata: Metadata = { title: "Staff" }
 
-export default function StaffPage() {
-  return (
-    <FeaturePlaceholder
-      title="Staff"
-      description="The reserved workspace for future team and staff administration."
-      route="/app/staff"
-      icon={UserRoundCog}
-    />
-  )
+export default async function StaffPage() {
+  let data: Awaited<ReturnType<typeof getStaffPageData>>
+
+  try {
+    data = await getStaffPageData()
+  } catch (error) {
+    if (error instanceof StaffSetupRequiredError) return <StaffSetupRequired />
+    if (error instanceof StaffAccessDeniedError) return <StaffAccessDenied />
+    throw error
+  }
+
+  return <StaffManagement data={data} />
 }

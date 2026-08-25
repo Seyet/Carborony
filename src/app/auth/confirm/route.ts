@@ -26,6 +26,25 @@ function authRedirect(destination: URL) {
   return response
 }
 
+function getSafeRedirectPath(requestUrl: URL) {
+  const redirectTo = requestUrl.searchParams.get("redirect_to")
+
+  if (!redirectTo) return undefined
+
+  try {
+    const destination = new URL(redirectTo, requestUrl.origin)
+
+    if (destination.origin !== requestUrl.origin) return undefined
+
+    return getSafeNextPath(
+      `${destination.pathname}${destination.search}${destination.hash}`,
+      undefined,
+    )
+  } catch {
+    return undefined
+  }
+}
+
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url)
   const tokenHash = requestUrl.searchParams.get("token_hash")
@@ -52,7 +71,7 @@ export async function GET(request: Request) {
   }
 
   const nextPath = getSafeNextPath(
-    requestUrl.searchParams.get("next"),
+    requestUrl.searchParams.get("next") ?? getSafeRedirectPath(requestUrl),
     type === "recovery" ? "/reset-password" : undefined,
   )
   const destination = new URL(nextPath, request.url)

@@ -1,10 +1,9 @@
 import type { Metadata } from "next"
 import Form from "next/form"
-import Link from "next/link"
 import { ArrowLeft, ChevronLeft, ChevronRight, ReceiptText, Search, X } from "lucide-react"
 
 import { EmptyState } from "@/components/common"
-import { Button } from "@/components/ui/button"
+import { Button, ButtonLink } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { PosSetupRequired } from "@/features/sales/pos/pos-setup-required"
 import { PosSetupRequiredError } from "@/features/sales/pos/server/get-pos-catalog"
@@ -67,7 +66,7 @@ export default async function SalesHistoryPage({ searchParams }: SalesHistoryPag
           <h1 className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">Sales history</h1>
           <p className="mt-1 text-sm text-muted-foreground">View completed sales and created invoices, then download their PDF documents.</p>
         </div>
-        <Button render={<Link href="/app/sales" />} variant="outline"><ArrowLeft aria-hidden="true" />New sale</Button>
+        <ButtonLink href="/app/sales" variant="outline"><ArrowLeft aria-hidden="true" />New sale</ButtonLink>
       </header>
 
       <Form action="/app/sales/history" className="flex flex-col gap-2 sm:flex-row">
@@ -86,9 +85,9 @@ export default async function SalesHistoryPage({ searchParams }: SalesHistoryPag
           <Search aria-hidden="true" />Search
         </Button>
         {searchQuery ? (
-          <Button className="h-10" render={<Link href="/app/sales/history" />} type="button" variant="outline">
+          <ButtonLink className="h-10" href="/app/sales/history" variant="outline">
             <X aria-hidden="true" />Clear
-          </Button>
+          </ButtonLink>
         ) : null}
       </Form>
 
@@ -101,17 +100,25 @@ export default async function SalesHistoryPage({ searchParams }: SalesHistoryPag
               {searchQuery ? ` matching “${searchQuery}”` : ""}
             </p>
             <div className="flex items-center gap-2">
-              <Button disabled={history.page <= 1} render={history.page > 1 ? <Link href={getHistoryHref(history.page - 1, searchQuery)} /> : undefined} size="sm" variant="outline"><ChevronLeft aria-hidden="true" />Previous</Button>
+              {history.page > 1 ? (
+                <ButtonLink href={getHistoryHref(history.page - 1, searchQuery)} size="sm" variant="outline"><ChevronLeft aria-hidden="true" />Previous</ButtonLink>
+              ) : (
+                <Button disabled size="sm" variant="outline"><ChevronLeft aria-hidden="true" />Previous</Button>
+              )}
               <span className="px-2">Page {history.page} of {history.pageCount}</span>
-              <Button disabled={history.page >= history.pageCount} render={history.page < history.pageCount ? <Link href={getHistoryHref(history.page + 1, searchQuery)} /> : undefined} size="sm" variant="outline">Next<ChevronRight aria-hidden="true" /></Button>
+              {history.page < history.pageCount ? (
+                <ButtonLink href={getHistoryHref(history.page + 1, searchQuery)} size="sm" variant="outline">Next<ChevronRight aria-hidden="true" /></ButtonLink>
+              ) : (
+                <Button disabled size="sm" variant="outline">Next<ChevronRight aria-hidden="true" /></Button>
+              )}
             </div>
           </div>
         </>
       ) : (
         <EmptyState
           action={searchQuery
-            ? <Button render={<Link href="/app/sales/history" />} variant="outline">Clear search</Button>
-            : <Button render={<Link href="/app/sales" />}>Create a transaction</Button>}
+            ? <ButtonLink href="/app/sales/history" variant="outline">Clear search</ButtonLink>
+            : <ButtonLink href="/app/sales">Create a transaction</ButtonLink>}
           description={searchQuery
             ? `No transactions match “${searchQuery}”. Try a different search.`
             : "Completed sales and created invoices will appear here."}

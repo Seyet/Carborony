@@ -33,8 +33,12 @@ export async function updateSession(request: NextRequest) {
 
   // Keep setup and public auth screens available before a project is linked,
   // but never allow an unconfigured deployment into authenticated routes.
+  const isProtectedRoute = pathname.startsWith("/app")
+    || pathname.startsWith("/onboarding")
+    || pathname.startsWith("/staff/invitations/")
+
   if (!isSupabaseConfigured()) {
-    if (pathname.startsWith("/app") || pathname.startsWith("/onboarding")) {
+    if (isProtectedRoute) {
       const loginUrl = new URL("/login", request.url)
       loginUrl.searchParams.set("next", `${pathname}${search}`)
       return NextResponse.redirect(loginUrl)
@@ -72,7 +76,7 @@ export async function updateSession(request: NextRequest) {
   const { data } = await supabase.auth.getClaims()
   const isAuthenticated = Boolean(data?.claims.sub)
 
-  if ((pathname.startsWith("/app") || pathname.startsWith("/onboarding")) && !isAuthenticated) {
+  if (isProtectedRoute && !isAuthenticated) {
     const loginUrl = new URL("/login", request.url)
     loginUrl.searchParams.set("next", `${pathname}${search}`)
 
