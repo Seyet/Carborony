@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 
 import { getCurrentBusiness } from "@/features/businesses/server/get-current-business"
 import { DashboardOverview } from "@/features/dashboard/dashboard-overview"
+import { getDashboardData } from "@/features/dashboard/server/get-dashboard"
 
 export const metadata: Metadata = {
   title: "Dashboard",
@@ -57,10 +58,7 @@ function getSafeDate(value: string | undefined, todayDate: string) {
 export default async function DashboardPage({
   searchParams,
 }: DashboardPageProps) {
-  const [business, query] = await Promise.all([
-    getCurrentBusiness(),
-    searchParams,
-  ])
+  const [business, query] = await Promise.all([getCurrentBusiness(), searchParams])
   const todayDate = getTodayDate()
   const legacyDate = getSafeDate(getFirstValue(query.date), todayDate)
   const requestedStart = getSafeDate(getFirstValue(query.start), todayDate)
@@ -77,12 +75,14 @@ export default async function DashboardPage({
     startDate === endDate
       ? startDateLabel
       : `${startDateLabel} – ${endDateLabel}`
+  const dashboard = await getDashboardData(startDate, endDate)
 
   return (
     <DashboardOverview
       businessName={business.name}
       dateRangeLabel={dateRangeLabel}
       endDate={endDate}
+      dashboard={dashboard}
       startDate={startDate}
       todayDate={todayDate}
     />
