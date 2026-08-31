@@ -28,6 +28,10 @@ function toRpcProduct(input: CatalogueProductInput): Json {
     name: input.name,
     selling_price: input.sellingPrice,
     sku: input.sku,
+    specifications: Object.fromEntries(input.specifications.map((specification) => [
+      specification.name,
+      { unit: specification.unit || null, value: specification.value },
+    ])),
     status: input.status,
     stock_quantity: input.stockQuantity,
     tags: input.tags,

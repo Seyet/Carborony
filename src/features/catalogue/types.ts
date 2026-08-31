@@ -55,6 +55,12 @@ export type ProductEditorVariant = {
   stockQuantity: number
 }
 
+export type ProductSpecification = {
+  name: string
+  unit: "" | "cm" | "in" | "m"
+  value: string
+}
+
 export type ProductEditorData = {
   categoryId: string | null
   costPrice: number
@@ -66,6 +72,7 @@ export type ProductEditorData = {
   name: string
   sellingPrice: number
   sku: string | null
+  specifications: ProductSpecification[]
   status: "active" | "archived" | "draft"
   stockQuantity: number
   tags: string[]

@@ -39,8 +39,18 @@ function mapVariants(value: Json): InventoryProduct["variants"] {
     if (item.sku !== null && typeof item.sku !== "string") return []
     if (typeof item.stock_quantity !== "number") return []
 
+    const attributes = item.attributes
+      && !Array.isArray(item.attributes)
+      && typeof item.attributes === "object"
+      ? Object.entries(item.attributes)
+          .filter((entry): entry is [string, string] => typeof entry[1] === "string")
+          .map(([name, attributeValue]) => ({ name, value: attributeValue }))
+      : []
+
     return [{
+      attributes,
       id: item.id,
+      imageUrl: typeof item.image_path === "string" ? publicMediaUrl(item.image_path) : null,
       name: item.name,
       sku: item.sku,
       stockQuantity: item.stock_quantity,

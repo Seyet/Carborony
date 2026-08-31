@@ -19,7 +19,9 @@ export type InventoryProduct = {
   stockQuantity: number
   trackInventory: boolean
   variants: Array<{
+    attributes: Array<{ name: string; value: string }>
     id: string
+    imageUrl: string | null
     name: string
     sku: string | null
     stockQuantity: number

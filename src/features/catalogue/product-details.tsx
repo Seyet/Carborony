@@ -194,6 +194,16 @@ export function ProductDetails({
             )) : <p className="text-sm text-muted-foreground">No tags have been added.</p>}
           </CardContent>
         </Card>
+        <Card>
+          <CardHeader><CardTitle as="h2">Specifications</CardTitle></CardHeader>
+          <CardContent>
+            {product.specifications.length ? (
+              <dl className="grid gap-3 sm:grid-cols-2">
+                {product.specifications.map((specification) => <div className="rounded-lg bg-muted/50 p-3" key={specification.name}><dt className="text-xs text-muted-foreground">{specification.name}</dt><dd className="mt-1 font-medium">{specification.value}{specification.unit ? ` ${specification.unit}` : ""}</dd></div>)}
+              </dl>
+            ) : <p className="text-sm text-muted-foreground">No fixed specifications have been added.</p>}
+          </CardContent>
+        </Card>
       </div>
 
       <Card className="overflow-hidden py-0">

@@ -209,6 +209,7 @@ type ProductRow = {
   reorder_level: number
   selling_price: number
   sku: string | null
+  specifications: Json
   status: string
   tags: string[]
   track_inventory: boolean
@@ -864,6 +865,7 @@ export type Database = {
           product_id: string
           product_name: string
           selling_price: number
+          specifications: Json
           track_inventory: boolean
           variants: Json
         }[]

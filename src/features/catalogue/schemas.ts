@@ -18,6 +18,12 @@ const variantAttributeSchema = z.object({
   value: z.string().trim().min(1, "Enter an option value.").max(80),
 })
 
+const productSpecificationSchema = z.object({
+  name: z.string().trim().min(1, "Enter a specification name.").max(50),
+  unit: z.enum(["", "cm", "in", "m"]),
+  value: z.string().trim().min(1, "Enter a specification value.").max(120),
+})
+
 export const productVariantSchema = z.object({
   attributes: z.array(variantAttributeSchema).max(10),
   costPrice: money,
@@ -39,6 +45,7 @@ export const catalogueProductSchema = z.object({
   name: z.string().trim().min(2, "Product name must be at least 2 characters.").max(160),
   sellingPrice: money,
   sku: nullableText(80, "SKU must be 80 characters or fewer."),
+  specifications: z.array(productSpecificationSchema).max(20),
   status: z.enum(["draft", "active", "archived"]),
   stockQuantity: quantity,
   tags: z.array(z.string().trim().min(1).max(50)).max(30),
@@ -55,6 +62,19 @@ export const catalogueProductSchema = z.object({
 
   const variantSkus = new Set<string>()
   product.variants.forEach((variant, index) => {
+    const attributeNames = new Set<string>()
+    variant.attributes.forEach((attribute, attributeIndex) => {
+      const normalizedName = attribute.name.toLocaleLowerCase()
+      if (attributeNames.has(normalizedName)) {
+        context.addIssue({
+          code: "custom",
+          message: "Each option can appear only once in a variant.",
+          path: ["variants", index, "attributes", attributeIndex, "name"],
+        })
+      }
+      attributeNames.add(normalizedName)
+    })
+
     if (!variant.sku) return
     const normalizedSku = variant.sku.toLowerCase()
     if (variantSkus.has(normalizedSku)) {
@@ -65,6 +85,35 @@ export const catalogueProductSchema = z.object({
       })
     }
     variantSkus.add(normalizedSku)
+  })
+
+  const variantCombinations = new Set<string>()
+  product.variants.forEach((variant, index) => {
+    const combination = variant.attributes
+      .map((attribute) => `${attribute.name.toLocaleLowerCase()}:${attribute.value.toLocaleLowerCase()}`)
+      .sort()
+      .join("|")
+    if (combination && variantCombinations.has(combination)) {
+      context.addIssue({
+        code: "custom",
+        message: "Each option combination must be unique.",
+        path: ["variants", index, "attributes"],
+      })
+    }
+    variantCombinations.add(combination)
+  })
+
+  const specificationNames = new Set<string>()
+  product.specifications.forEach((specification, index) => {
+    const normalizedName = specification.name.toLocaleLowerCase()
+    if (specificationNames.has(normalizedName)) {
+      context.addIssue({
+        code: "custom",
+        message: "Specification names must be unique.",
+        path: ["specifications", index, "name"],
+      })
+    }
+    specificationNames.add(normalizedName)
   })
 
   if (product.variants.length) {

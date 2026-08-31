@@ -44,6 +44,17 @@ function useCart() {
   return value
 }
 
+function variantDetails(variant: StorefrontVariant) {
+  return Object.entries(variant.attributes).map(([name, value]) => `${name}: ${value}`).join(" · ")
+}
+
+function productImageUrl(product: StorefrontProduct, variant?: StorefrontVariant) {
+  return variant?.imageUrls[0]
+    ?? product.imageUrls[0]
+    ?? product.variants.find((item) => item.imageUrls.length)?.imageUrls[0]
+    ?? null
+}
+
 function CartProvider({ children, slug }: { children: ReactNode; slug: string }) {
   const [cart, setCart] = useState<CartItem[]>([])
   const [hydrated, setHydrated] = useState(false)
@@ -72,14 +83,14 @@ function CartProvider({ children, slug }: { children: ReactNode; slug: string })
   const value = useMemo<CartContextValue>(() => ({
     add(product, variant) {
       const next: CartItem = {
-        imageUrl: product.imageUrls[0] ?? null,
+        imageUrl: productImageUrl(product, variant),
         maxStock: product.trackInventory ? (variant?.stockQuantity ?? product.availableStock ?? 0) : null,
         name: product.name,
         productId: product.id,
         quantity: 1,
         unitPrice: variant?.sellingPrice ?? product.discountPrice ?? product.sellingPrice,
         variantId: variant?.id ?? null,
-        variantName: variant?.name ?? null,
+        variantName: variant ? variantDetails(variant) || variant.name : null,
       }
       setCart((current) => {
         const key = itemKey(next)
@@ -134,25 +145,204 @@ export function StorefrontShell({ children, preview = false, store }: { children
 export function ProductCard({ preview = false, product, store }: { preview?: boolean; product: StorefrontProduct; store: PublicStorefront }) {
   const { add } = useCart()
   const outOfStock = product.trackInventory && (product.variants.length ? product.variants.every((variant) => variant.stockQuantity <= 0) : (product.availableStock ?? 0) <= 0)
-  const price = product.discountPrice ?? product.sellingPrice
   const money = new Intl.NumberFormat("en", { currency: store.currencyCode, currencyDisplay: "narrowSymbol", style: "currency" })
+  const variantPrices = product.variants.map((variant) => variant.sellingPrice)
+  const minimumPrice = variantPrices.length ? Math.min(...variantPrices) : product.discountPrice ?? product.sellingPrice
+  const maximumPrice = variantPrices.length ? Math.max(...variantPrices) : minimumPrice
+  const priceLabel = minimumPrice === maximumPrice
+    ? money.format(minimumPrice)
+    : `${money.format(minimumPrice)} – ${money.format(maximumPrice)}`
   const href = `/store/${store.slug}/products/${product.id}${preview ? "?preview=1" : ""}`
+  const imageUrl = productImageUrl(product)
   return <article className="group overflow-hidden rounded-2xl border bg-card shadow-xs transition hover:-translate-y-0.5 hover:shadow-md">
-    <Link className="relative block aspect-square overflow-hidden bg-muted" href={href}>{product.imageUrls[0] ? <Image alt={product.name} fill className="object-cover transition duration-300 group-hover:scale-105" sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw" src={product.imageUrls[0]} unoptimized /> : <Package aria-hidden="true" className="absolute inset-0 m-auto size-10 text-muted-foreground/40" />}{outOfStock ? <span className="absolute top-3 left-3 rounded-full bg-background/90 px-2 py-1 text-xs font-medium">Sold out</span> : null}</Link>
-    <div className="p-4"><p className="text-xs text-muted-foreground">{product.categoryName ?? "Shop"}</p><Link className="mt-1 block truncate font-semibold hover:underline" href={href}>{product.name}</Link><div className="mt-3 flex items-center justify-between gap-2"><p><strong>{money.format(price)}</strong>{product.discountPrice !== null ? <span className="ml-2 text-xs text-muted-foreground line-through">{money.format(product.sellingPrice)}</span> : null}</p>{product.variants.length ? <ButtonLink href={href} size="sm" variant="outline">Choose</ButtonLink> : <Button disabled={outOfStock} onClick={() => add(product)} size="sm"><Plus aria-hidden="true" />Add</Button>}</div></div>
+    <Link className="relative block aspect-square overflow-hidden bg-muted" href={href}>{imageUrl ? <Image alt={product.name} fill className="object-cover transition duration-300 group-hover:scale-105" sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw" src={imageUrl} unoptimized /> : <Package aria-hidden="true" className="absolute inset-0 m-auto size-10 text-muted-foreground/40" />}{outOfStock ? <span className="absolute top-3 left-3 rounded-full bg-background/90 px-2 py-1 text-xs font-medium">Sold out</span> : null}</Link>
+    <div className="p-4"><p className="text-xs text-muted-foreground">{product.categoryName ?? "Shop"}</p><Link className="mt-1 block truncate font-semibold hover:underline" href={href}>{product.name}</Link><div className="mt-3 flex items-center justify-between gap-2"><p><strong>{priceLabel}</strong>{product.discountPrice !== null && !product.variants.length ? <span className="ml-2 text-xs text-muted-foreground line-through">{money.format(product.sellingPrice)}</span> : null}</p>{product.variants.length ? <ButtonLink href={href} size="sm" variant="outline">Choose</ButtonLink> : <Button disabled={outOfStock} onClick={() => add(product)} size="sm"><Plus aria-hidden="true" />Add</Button>}</div></div>
   </article>
 }
 
-export function ProductPurchase({ product }: { product: StorefrontProduct }) {
+export function StorefrontProductView({ product, store }: { product: StorefrontProduct; store: PublicStorefront }) {
   const { add } = useCart()
-  const [variantId, setVariantId] = useState(product.variants[0]?.id ?? "")
-  const variant = product.variants.find((item) => item.id === variantId)
+  const optionGroups = useMemo(() => {
+    const groups = new Map<string, { name: string; values: string[] }>()
+    product.variants.forEach((variant) => Object.entries(variant.attributes).forEach(([name, value]) => {
+      const key = name.toLocaleLowerCase()
+      const group = groups.get(key) ?? { name, values: [] }
+      if (!group.values.some((item) => item.toLocaleLowerCase() === value.toLocaleLowerCase())) group.values.push(value)
+      groups.set(key, group)
+    }))
+    return [...groups.values()]
+  }, [product.variants])
+  const initialVariant = product.variants.find((item) => !product.trackInventory || item.stockQuantity > 0) ?? product.variants[0]
+  const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>(() => Object.fromEntries(
+    optionGroups.map((group) => [
+      group.name,
+      Object.entries(initialVariant?.attributes ?? {}).find(([name]) => name.toLocaleLowerCase() === group.name.toLocaleLowerCase())?.[1]
+        ?? group.values[0]
+        ?? "",
+    ]),
+  ))
+  const [variantId, setVariantId] = useState(initialVariant?.id ?? "")
+  function attributeValue(variant: StorefrontVariant, name: string) {
+    return Object.entries(variant.attributes)
+      .find(([attributeName]) => attributeName.toLocaleLowerCase() === name.toLocaleLowerCase())?.[1]
+  }
+  function matchesSelection(variant: StorefrontVariant, ignoredOption?: string) {
+    return optionGroups.every((group) => {
+      if (group.name === ignoredOption) return true
+      const selectedValue = selectedOptions[group.name]
+      return !selectedValue || attributeValue(variant, group.name)?.toLocaleLowerCase() === selectedValue.toLocaleLowerCase()
+    })
+  }
+  const variant = optionGroups.length
+    ? product.variants.find((item) => matchesSelection(item))
+    : product.variants.find((item) => item.id === variantId)
   const available = product.trackInventory ? (variant?.stockQuantity ?? product.availableStock ?? 0) : null
-  return <div className="space-y-4">
-    {product.variants.length ? <label className="grid gap-2 text-sm font-medium">Option<select className="h-11 rounded-lg border bg-background px-3" onChange={(event) => setVariantId(event.currentTarget.value)} value={variantId}>{product.variants.map((item) => <option disabled={product.trackInventory && item.stockQuantity <= 0} key={item.id} value={item.id}>{item.name}{product.trackInventory && item.stockQuantity <= 0 ? " — sold out" : ""}</option>)}</select></label> : null}
-    <Button className="w-full" disabled={available !== null && available <= 0} onClick={() => add(product, variant)} size="lg"><ShoppingCart aria-hidden="true" />{available !== null && available <= 0 ? "Sold out" : "Add to cart"}</Button>
-    {available !== null && available > 0 && available <= 5 ? <p className="text-center text-xs text-amber-700">Only {available} left</p> : null}
-  </div>
+  const variantImages = variant?.imageUrls ?? []
+  const galleryImages = [...new Set(variantImages.length
+    ? [...variantImages, ...product.imageUrls]
+    : product.imageUrls.length
+      ? product.imageUrls
+      : product.variants.flatMap((item) => item.imageUrls).slice(0, 1))]
+  const selectedDetails = variant ? variantDetails(variant) : ""
+  const price = variant?.sellingPrice ?? product.discountPrice ?? product.sellingPrice
+  const money = new Intl.NumberFormat("en", {
+    currency: store.currencyCode,
+    currencyDisplay: "narrowSymbol",
+    style: "currency",
+  })
+  const cannotAdd = Boolean(product.variants.length && !variant)
+    || (available !== null && available <= 0)
+
+  return (
+    <div className="mt-6 grid gap-8 lg:grid-cols-[minmax(0,1fr)_440px]">
+      <div className="grid content-start gap-3 sm:grid-cols-2">
+        {galleryImages.length ? galleryImages.map((url, index) => (
+          <div
+            className={`relative overflow-hidden rounded-2xl bg-muted ${index === 0 ? "aspect-square sm:col-span-2" : "aspect-square"}`}
+            key={url}
+          >
+            <Image
+              alt={`${product.name}${variant ? `, ${variant.name}` : ""}${index ? `, image ${index + 1}` : ""}`}
+              className="object-cover"
+              fill
+              priority={index === 0}
+              sizes={index === 0 ? "(max-width: 1024px) 100vw, 60vw" : "(max-width: 640px) 100vw, 30vw"}
+              src={url}
+              unoptimized
+            />
+          </div>
+        )) : (
+          <div className="relative aspect-square rounded-2xl bg-muted sm:col-span-2">
+            <Package aria-hidden="true" className="absolute inset-0 m-auto size-20 text-muted-foreground/30" />
+          </div>
+        )}
+      </div>
+
+      <section className="lg:sticky lg:top-24 lg:self-start">
+        <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{product.categoryName ?? "Shop"}</p>
+        <h1 className="mt-2 text-3xl font-semibold tracking-tight">{product.name}</h1>
+        <div className="mt-4 flex items-center gap-3">
+          <strong className="text-2xl">{money.format(price)}</strong>
+          {product.discountPrice !== null && !product.variants.length ? (
+            <span className="text-sm text-muted-foreground line-through">{money.format(product.sellingPrice)}</span>
+          ) : null}
+        </div>
+
+        {product.description ? <p className="mt-6 whitespace-pre-wrap leading-7 text-muted-foreground">{product.description}</p> : null}
+
+        <div className="mt-7 space-y-5 border-t pt-6">
+          {optionGroups.length ? optionGroups.map((group) => (
+            <fieldset className="grid gap-2" key={group.name}>
+              <legend className="text-sm font-medium">{group.name}</legend>
+              <div className="flex flex-wrap gap-2">
+                {group.values.map((value) => {
+                  const selected = selectedOptions[group.name]?.toLocaleLowerCase() === value.toLocaleLowerCase()
+                  const availableValue = product.variants.some((item) =>
+                    attributeValue(item, group.name)?.toLocaleLowerCase() === value.toLocaleLowerCase()
+                    && matchesSelection(item, group.name)
+                    && (!product.trackInventory || item.stockQuantity > 0),
+                  )
+                  return (
+                    <button
+                      aria-pressed={selected}
+                      className={`rounded-lg border px-3 py-2 text-sm font-medium transition ${selected ? "border-primary bg-primary text-primary-foreground" : "hover:border-primary/50"} ${!availableValue ? "cursor-not-allowed opacity-40 line-through" : ""}`}
+                      disabled={!availableValue}
+                      key={value}
+                      onClick={() => setSelectedOptions((current) => ({ ...current, [group.name]: value }))}
+                      type="button"
+                    >
+                      {value}
+                    </button>
+                  )
+                })}
+              </div>
+            </fieldset>
+          )) : product.variants.length ? (
+            <label className="grid gap-2 text-sm font-medium">
+              Option
+              <select
+                className="h-11 rounded-lg border bg-background px-3"
+                onChange={(event) => setVariantId(event.currentTarget.value)}
+                value={variantId}
+              >
+                {product.variants.map((item) => (
+                  <option disabled={product.trackInventory && item.stockQuantity <= 0} key={item.id} value={item.id}>
+                    {item.name}{product.trackInventory && item.stockQuantity <= 0 ? " — sold out" : ""}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
+
+          {variant ? (
+            <div className="rounded-xl border bg-muted/30 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Selected variant</p>
+                  <p className="mt-1 font-semibold">{variant.name}</p>
+                </div>
+                <span className={`text-xs font-medium ${available !== null && available <= 0 ? "text-destructive" : "text-emerald-700 dark:text-emerald-400"}`}>
+                  {available === null ? "Available" : available <= 0 ? "Sold out" : `${available.toLocaleString()} in stock`}
+                </span>
+              </div>
+              {selectedDetails ? <p className="mt-2 text-sm text-muted-foreground">{selectedDetails}</p> : null}
+              {variant.sku ? <p className="mt-2 text-xs text-muted-foreground">SKU: {variant.sku}</p> : null}
+            </div>
+          ) : null}
+
+          <Button
+            className="w-full"
+            disabled={cannotAdd}
+            onClick={() => { if (!cannotAdd) add(product, variant) }}
+            size="lg"
+          >
+            <ShoppingCart aria-hidden="true" />{available !== null && available <= 0 ? "Sold out" : "Add to cart"}
+          </Button>
+          {available !== null && available > 0 && available <= 5 ? <p className="text-center text-xs text-amber-700">Only {available} left</p> : null}
+        </div>
+
+        {product.specifications.length ? (
+          <div className="mt-8 border-t pt-6">
+            <h2 className="font-semibold">Product details</h2>
+            <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
+              {product.specifications.map((specification) => (
+                <div key={specification.name}>
+                  <dt className="text-muted-foreground">{specification.name}</dt>
+                  <dd className="mt-1 font-medium">{specification.value}{specification.unit ? ` ${specification.unit}` : ""}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        ) : null}
+
+        <div className="mt-8 border-t pt-5 text-xs text-muted-foreground">
+          <p>Prices and availability are verified at checkout.</p>
+          {store.settings.deliveryEnabled ? <p className="mt-1">Delivery pricing is based on the zone selected at checkout.</p> : null}
+          {store.settings.pickupEnabled ? <p className="mt-1">Pickup available from {store.settings.pickupAddress}.</p> : null}
+        </div>
+      </section>
+    </div>
+  )
 }
 
 export function StorefrontCart({ store }: { store: PublicStorefront }) {

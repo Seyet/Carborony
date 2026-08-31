@@ -52,9 +52,17 @@ export type StorefrontAdminData = {
 export type StorefrontVariant = {
   attributes: Record<string, string>
   id: string
+  imageUrls: string[]
   name: string
   sellingPrice: number
+  sku: string | null
   stockQuantity: number
+}
+
+export type StorefrontSpecification = {
+  name: string
+  unit: "" | "cm" | "in" | "m"
+  value: string
 }
 
 export type StorefrontProduct = {
@@ -68,6 +76,7 @@ export type StorefrontProduct = {
   isFeatured: boolean
   name: string
   sellingPrice: number
+  specifications: StorefrontSpecification[]
   trackInventory: boolean
   variants: StorefrontVariant[]
 }

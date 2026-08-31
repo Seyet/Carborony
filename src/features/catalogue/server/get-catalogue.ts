@@ -8,6 +8,7 @@ import type {
   CatalogueCategory,
   CatalogueResult,
   ProductEditorData,
+  ProductSpecification,
   ProductEditorVariant,
 } from "../types"
 
@@ -51,6 +52,22 @@ function attributesToArray(value: Json): ProductEditorVariant["attributes"] {
   return Object.entries(value)
     .filter((entry): entry is [string, string] => typeof entry[1] === "string")
     .map(([name, attributeValue]) => ({ name, value: attributeValue }))
+}
+
+function specificationsToArray(value: Json): ProductSpecification[] {
+  if (!value || Array.isArray(value) || typeof value !== "object") return []
+
+  return Object.entries(value).flatMap(([name, specification]) => {
+    if (!specification || Array.isArray(specification) || typeof specification !== "object") return []
+    const value = specification.value
+    const unit = specification.unit
+    if (typeof value !== "string") return []
+    return [{
+      name,
+      unit: unit === "cm" || unit === "in" || unit === "m" ? unit : "",
+      value,
+    }]
+  })
 }
 
 function publicMediaUrl(path: string) {
@@ -148,7 +165,7 @@ export async function getProductEditorData(productId: string): Promise<ProductEd
   const supabase = await createClient()
   const [productResult, variantsResult, levelsResult, mediaResult] = await Promise.all([
     supabase.from("products")
-      .select("id, category_id, name, sku, description, status, selling_price, cost_price, discount_price, track_inventory, reorder_level, tags")
+      .select("id, category_id, name, sku, description, status, selling_price, cost_price, discount_price, track_inventory, reorder_level, tags, specifications")
       .eq("business_id", business.id)
       .eq("id", productId)
       .maybeSingle(),
@@ -217,6 +234,7 @@ export async function getProductEditorData(productId: string): Promise<ProductEd
     name: product.name,
     sellingPrice: Number(product.selling_price),
     sku: product.sku,
+    specifications: specificationsToArray(product.specifications),
     status: product.status as ProductEditorData["status"],
     stockQuantity: (levelsResult.data ?? []).reduce(
       (total, level) => total + Number(level.quantity_on_hand),

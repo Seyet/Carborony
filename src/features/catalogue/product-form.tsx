@@ -1,7 +1,7 @@
 "use client"
 
 import { type ChangeEvent, type FormEvent, useMemo, useState } from "react"
-import { ImagePlus, LoaderCircle, Plus, Save, Trash2, Upload, Video } from "lucide-react"
+import { ImagePlus, LoaderCircle, Plus, Save, Trash2, Upload, Video, X } from "lucide-react"
 import { toast } from "sonner"
 
 import { Button, ButtonLink } from "@/components/ui/button"
@@ -12,11 +12,11 @@ import { postJson } from "@/lib/api/client"
 import { createClient } from "@/lib/supabase/client"
 import type { MediaMutationData, MediaUploadData, SaveProductData } from "./api-types"
 import { catalogueProductSchema, type CatalogueProductInput } from "./schemas"
-import type { CatalogueCategory, ProductEditorData } from "./types"
+import type { CatalogueCategory, ProductEditorData, ProductSpecification } from "./types"
 import { ProductMediaManager } from "./product-media-manager"
 
 type FormVariant = {
-  attributes: string
+  attributes: Array<{ name: string; value: string }>
   costPrice: string
   id: string
   image: File | null
@@ -27,6 +27,42 @@ type FormVariant = {
   sku: string
   stockQuantity: string
 }
+
+type FormOptionGroup = {
+  id: string
+  name: string
+  values: string[]
+}
+
+const optionPresets = [
+  { name: "Size", values: [] },
+  { name: "Colour", values: [] },
+  { name: "Length", values: [] },
+  { name: "Material", values: [] },
+  { name: "Storage", values: [] },
+  { name: "Pack size", values: [] },
+] as const
+
+const sizeOptions = ["XXS", "XS", "Small", "Medium", "Large", "XL", "XXL", "3XL", "4XL", "One size"]
+const colourOptions = [
+  "Black",
+  "White",
+  "Grey",
+  "Red",
+  "Orange",
+  "Yellow",
+  "Green",
+  "Blue",
+  "Purple",
+  "Pink",
+  "Brown",
+  "Beige",
+  "Gold",
+  "Silver",
+  "Multicolour",
+]
+
+type MeasurementUnit = "cm" | "in" | "m"
 
 type FormValues = {
   categoryId: string
@@ -49,20 +85,9 @@ function numberValue(value: string) {
   return Number.isFinite(parsed) ? parsed : Number.NaN
 }
 
-function parseAttributes(value: string) {
-  return value.split(",").map((part) => part.trim()).filter(Boolean).map((part) => {
-    const [name = "", ...valueParts] = part.split(":")
-    return { name: name.trim(), value: valueParts.join(":").trim() }
-  })
-}
-
-function attributesText(attributes: Array<{ name: string; value: string }>) {
-  return attributes.map((attribute) => `${attribute.name}: ${attribute.value}`).join(", ")
-}
-
 function defaultVariant(sellingPrice: string, costPrice: string): FormVariant {
   return {
-    attributes: "",
+    attributes: [],
     costPrice,
     id: crypto.randomUUID(),
     image: null,
@@ -73,6 +98,51 @@ function defaultVariant(sellingPrice: string, costPrice: string): FormVariant {
     sku: "",
     stockQuantity: "0",
   }
+}
+
+function normalizedText(value: string) {
+  return value.trim().toLocaleLowerCase()
+}
+
+function attributesKey(attributes: Array<{ name: string; value: string }>) {
+  return attributes
+    .map((attribute) => `${normalizedText(attribute.name)}:${normalizedText(attribute.value)}`)
+    .sort()
+    .join("|")
+}
+
+function optionGroupsFromVariants(variants: FormVariant[]): FormOptionGroup[] {
+  const groups = new Map<string, FormOptionGroup>()
+  variants.forEach((variant) => variant.attributes.forEach((attribute) => {
+    const key = normalizedText(attribute.name)
+    if (!key || !normalizedText(attribute.value)) return
+    const group = groups.get(key) ?? {
+      id: crypto.randomUUID(),
+      name: attribute.name.trim(),
+      values: [],
+    }
+    if (!group.values.some((value) => normalizedText(value) === normalizedText(attribute.value))) {
+      group.values.push(attribute.value.trim())
+    }
+    groups.set(key, group)
+  }))
+  return [...groups.values()]
+}
+
+function variantName(attributes: Array<{ name: string; value: string }>) {
+  return attributes.map((attribute) => attribute.value).join(" / ")
+}
+
+function allCombinations(groups: FormOptionGroup[]) {
+  const usableGroups = groups.filter((group) => group.name.trim() && group.values.length)
+  if (!usableGroups.length || usableGroups.length !== groups.length) return []
+  return usableGroups.reduce<Array<Array<{ name: string; value: string }>>>(
+    (combinations, group) => combinations.flatMap((combination) => group.values.map((value) => [
+      ...combination,
+      { name: group.name.trim(), value },
+    ])),
+    [[]],
+  )
 }
 
 function initialFormState(initial: ProductEditorData | null, categories: CatalogueCategory[]) {
@@ -101,7 +171,7 @@ function initialFormState(initial: ProductEditorData | null, categories: Catalog
       trackInventory: initial?.trackInventory ?? true,
     } satisfies FormValues,
     variants: initial?.variants.map((variant) => ({
-      attributes: attributesText(variant.attributes),
+      attributes: variant.attributes,
       costPrice: String(variant.costPrice),
       id: variant.id,
       image: null,
@@ -112,6 +182,7 @@ function initialFormState(initial: ProductEditorData | null, categories: Catalog
       sku: variant.sku ?? "",
       stockQuantity: String(variant.stockQuantity),
     })) ?? [],
+    specifications: initial?.specifications ?? [] satisfies ProductSpecification[],
   }
 }
 
@@ -130,6 +201,13 @@ export function ProductForm({
   )
   const [values, setValues] = useState<FormValues>(initialState.values)
   const [variants, setVariants] = useState<FormVariant[]>(initialState.variants)
+  const [optionGroups, setOptionGroups] = useState<FormOptionGroup[]>(() => optionGroupsFromVariants(initialState.variants))
+  const [optionValueDrafts, setOptionValueDrafts] = useState<Record<string, string>>({})
+  const [optionMeasurementUnits, setOptionMeasurementUnits] = useState<Record<string, MeasurementUnit>>({})
+  const [specifications, setSpecifications] = useState<ProductSpecification[]>(initialState.specifications)
+  const [hasOptions, setHasOptions] = useState(initialState.variants.length > 0)
+  const [bulkStockQuantity, setBulkStockQuantity] = useState("")
+  const [bulkSkuPrefix, setBulkSkuPrefix] = useState("")
   const [images, setImages] = useState<File[]>([])
   const [videos, setVideos] = useState<File[]>([])
   const [mediaError, setMediaError] = useState("")
@@ -139,7 +217,7 @@ export function ProductForm({
 
   const payload = useMemo<CatalogueProductInput>(() => {
     const mappedVariants = variants.map((variant) => ({
-      attributes: parseAttributes(variant.attributes),
+      attributes: variant.attributes,
       costPrice: numberValue(variant.costPrice),
       id: variant.id,
       isActive: variant.isActive,
@@ -162,13 +240,14 @@ export function ProductForm({
       name: values.name,
       sellingPrice: numberValue(values.sellingPrice),
       sku: values.sku.trim() || null,
+      specifications,
       status: values.status,
       stockQuantity,
       tags: [...new Set(values.tags.split(",").map((tag) => tag.trim()).filter(Boolean))],
       trackInventory: values.trackInventory,
       variants: mappedVariants,
     }
-  }, [values, variants])
+  }, [specifications, values, variants])
   const validation = useMemo(() => catalogueProductSchema.safeParse(payload), [payload])
   const rootCategories = categories.filter((category) => !category.parentId && category.isActive)
   const subcategories = categories.filter((category) =>
@@ -190,6 +269,170 @@ export function ProductForm({
     setVariants((current) => current.map((variant, variantIndex) =>
       variantIndex === index ? { ...variant, ...changes } : variant,
     ))
+  }
+
+  function addOptionGroup(name = "", values: string[] = []) {
+    const normalizedName = normalizedText(name)
+    if (optionGroups.length >= 3) {
+      toast.error("Use up to three option groups so the product stays easy to manage.")
+      return
+    }
+    if (normalizedName && optionGroups.some((group) => normalizedText(group.name) === normalizedName)) {
+      toast.error(`${name} has already been added.`)
+      return
+    }
+    setOptionGroups((current) => [...current, { id: crypto.randomUUID(), name, values }])
+  }
+
+  function updateOptionGroup(id: string, changes: Partial<FormOptionGroup>) {
+    setOptionGroups((current) => current.map((group) => group.id === id ? { ...group, ...changes } : group))
+  }
+
+  function addOptionValue(group: FormOptionGroup, selectedValue?: string) {
+    const draftValue = selectedValue?.trim() || optionValueDrafts[group.id]?.trim() || ""
+    const value = normalizedText(group.name) === "length" && draftValue
+      ? `${draftValue} ${optionMeasurementUnits[group.id] ?? "cm"}`
+      : draftValue
+    if (!value || group.values.some((item) => normalizedText(item) === normalizedText(value))) return
+    updateOptionGroup(group.id, { values: [...group.values, value] })
+    setOptionValueDrafts((current) => ({ ...current, [group.id]: "" }))
+  }
+
+  function updateOptionValueDraft(groupId: string, value: string) {
+    setOptionValueDrafts((current) => ({ ...current, [groupId]: value }))
+  }
+
+  function optionValueControl(group: FormOptionGroup) {
+    const optionName = normalizedText(group.name)
+
+    if (optionName === "size" || optionName === "colour" || optionName === "color") {
+      const choices = optionName === "size" ? sizeOptions : colourOptions
+      const availableChoices = choices.filter((choice) =>
+        !group.values.some((value) => normalizedText(value) === normalizedText(choice)),
+      )
+
+      return (
+        <select
+          aria-label={`Add ${group.name || "option"} value`}
+          className="h-8 min-w-0 flex-1 rounded-lg border border-input bg-background px-2.5 text-sm disabled:opacity-50"
+          disabled={!availableChoices.length}
+          onChange={(event) => {
+            const selectedValue = event.currentTarget.value
+            if (selectedValue) addOptionValue(group, selectedValue)
+          }}
+          value=""
+        >
+          <option value="">{availableChoices.length ? `Select ${optionName === "size" ? "a size" : "a colour"}` : "All options added"}</option>
+          {availableChoices.map((choice) => <option key={choice} value={choice}>{choice}</option>)}
+        </select>
+      )
+    }
+
+    if (optionName === "length") {
+      return (
+        <>
+          <Input
+            aria-label="Length value"
+            inputMode="decimal"
+            min="0"
+            onValueChange={(value) => updateOptionValueDraft(group.id, value)}
+            placeholder="e.g. 50"
+            step="any"
+            type="number"
+            value={optionValueDrafts[group.id] ?? ""}
+          />
+          <select
+            aria-label="Length unit"
+            className="h-8 rounded-lg border border-input bg-background px-2.5 text-sm"
+            onChange={(event) => setOptionMeasurementUnits((current) => ({
+              ...current,
+              [group.id]: event.currentTarget.value as MeasurementUnit,
+            }))}
+            value={optionMeasurementUnits[group.id] ?? "cm"}
+          >
+            <option value="cm">cm</option>
+            <option value="in">inches</option>
+            <option value="m">metres</option>
+          </select>
+          <Button onClick={() => addOptionValue(group)} type="button" variant="outline">Add</Button>
+        </>
+      )
+    }
+
+    return (
+      <>
+        <Input
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              event.preventDefault()
+              addOptionValue(group)
+            }
+          }}
+          onValueChange={(value) => updateOptionValueDraft(group.id, value)}
+          placeholder="Type a value and press Enter"
+          value={optionValueDrafts[group.id] ?? ""}
+        />
+        <Button onClick={() => addOptionValue(group)} type="button" variant="outline">Add</Button>
+      </>
+    )
+  }
+
+  function generateVariants() {
+    const combinations = allCombinations(optionGroups)
+    if (!combinations.length || combinations.length > 100) return
+
+    const existing = new Map(variants.map((variant) => [attributesKey(variant.attributes), variant]))
+    const retainedKeys = new Set(combinations.map(attributesKey))
+    const removedCount = variants.filter((variant) => !retainedKeys.has(attributesKey(variant.attributes))).length
+    if (removedCount && !window.confirm(`Regenerating will remove ${removedCount} existing variant${removedCount === 1 ? "" : "s"} from this form. Continue?`)) return
+    setTouched((current) => ({ ...current, variants: true }))
+    setVariants(combinations.map((attributes) => {
+      const prior = existing.get(attributesKey(attributes))
+      return prior ?? {
+        ...defaultVariant(values.sellingPrice, values.costPrice),
+        attributes,
+        name: variantName(attributes),
+      }
+    }))
+  }
+
+  function updateSpecification(index: number, changes: Partial<ProductSpecification>) {
+    setTouched((current) => ({ ...current, specifications: true }))
+    setSpecifications((current) => current.map((specification, specificationIndex) =>
+      specificationIndex === index ? { ...specification, ...changes } : specification,
+    ))
+  }
+
+  function setProductOptionMode(enabled: boolean) {
+    if (!enabled && variants.length && !window.confirm("This will remove the product's variants when you save. Continue?")) return
+    setHasOptions(enabled)
+    if (!enabled) {
+      setOptionGroups([])
+      setVariants([])
+    }
+  }
+
+  function applyProductDefaults() {
+    setVariants((current) => current.map((variant) => ({
+      ...variant,
+      costPrice: values.costPrice,
+      lowStockThreshold: values.lowStockThreshold,
+      sellingPrice: values.sellingPrice,
+    })))
+  }
+
+  function applyBulkStock() {
+    if (!Number.isFinite(numberValue(bulkStockQuantity)) || numberValue(bulkStockQuantity) < 0) return
+    setVariants((current) => current.map((variant) => ({ ...variant, stockQuantity: bulkStockQuantity })))
+  }
+
+  function applySkuPrefix() {
+    const prefix = bulkSkuPrefix.trim()
+    if (!prefix) return
+    setVariants((current) => current.map((variant, index) => ({
+      ...variant,
+      sku: variant.sku || `${prefix}-${String(index + 1).padStart(3, "0")}`,
+    })))
   }
 
   function chooseImages(event: ChangeEvent<HTMLInputElement>) {
@@ -333,6 +576,10 @@ export function ProductForm({
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    if (hasOptions && !variants.length) {
+      toast.error("Review the option combinations before saving this product.")
+      return
+    }
     if (pending || !validation.success || mediaError) {
       setTouched({
         costPrice: true,
@@ -340,6 +587,7 @@ export function ProductForm({
         lowStockThreshold: true,
         name: true,
         sellingPrice: true,
+        specifications: true,
         stockQuantity: true,
         variants: true,
       })
@@ -376,6 +624,12 @@ export function ProductForm({
   }
 
   const variantError = errorFor("variants")
+  const specificationError = errorFor("specifications")
+  const generatedCombinations = allCombinations(optionGroups)
+  const duplicateOptionNames = optionGroups.some((group, index) => optionGroups.some((other, otherIndex) =>
+    index !== otherIndex && normalizedText(group.name) && normalizedText(group.name) === normalizedText(other.name),
+  ))
+  const canGenerateVariants = !duplicateOptionNames && generatedCombinations.length > 0 && generatedCombinations.length <= 100
 
   return (
     <form className="grid gap-6" noValidate onSubmit={submit}>
@@ -402,29 +656,45 @@ export function ProductForm({
           <label className="grid gap-2 text-sm font-medium">Discount price <span className="font-normal text-muted-foreground">(optional)</span><Input aria-invalid={Boolean(errorFor("discountPrice")) || undefined} inputMode="decimal" min="0" onChange={(event) => setField("discountPrice", event.currentTarget.value)} placeholder="No discount" step="0.01" type="number" value={values.discountPrice} />{errorFor("discountPrice") ? <span className="text-xs text-destructive">{errorFor("discountPrice")}</span> : null}</label>
           <label className="grid gap-2 text-sm font-medium">Low-stock threshold<Input inputMode="decimal" min="0" onChange={(event) => setField("lowStockThreshold", event.currentTarget.value)} step="0.001" type="number" value={values.lowStockThreshold} /></label>
           <label className="flex items-center gap-2 text-sm md:col-span-2 xl:col-span-4"><input checked={values.trackInventory} className="size-4 accent-primary" onChange={(event) => setField("trackInventory", event.currentTarget.checked)} type="checkbox" />Track inventory for this product</label>
-          {values.trackInventory && !variants.length ? <label className="grid gap-2 text-sm font-medium">Stock quantity<Input aria-invalid={Boolean(errorFor("stockQuantity")) || undefined} inputMode="decimal" min="0" onChange={(event) => setField("stockQuantity", event.currentTarget.value)} step="0.001" type="number" value={values.stockQuantity} /></label> : null}
-          {values.trackInventory && variants.length ? <p className="rounded-lg bg-muted p-3 text-sm text-muted-foreground md:col-span-2 xl:col-span-4">Total product stock is calculated from the variant quantities: <strong className="text-foreground">{Number.isFinite(payload.stockQuantity) ? payload.stockQuantity : 0}</strong></p> : null}
+          {values.trackInventory && !hasOptions ? <label className="grid gap-2 text-sm font-medium">Stock quantity<Input aria-invalid={Boolean(errorFor("stockQuantity")) || undefined} inputMode="decimal" min="0" onChange={(event) => setField("stockQuantity", event.currentTarget.value)} step="0.001" type="number" value={values.stockQuantity} /></label> : null}
+          {values.trackInventory && hasOptions ? <p className="rounded-lg bg-muted p-3 text-sm text-muted-foreground md:col-span-2 xl:col-span-4">{variants.length ? <>Total product stock is calculated from the variant quantities: <strong className="text-foreground">{Number.isFinite(payload.stockQuantity) ? payload.stockQuantity : 0}</strong></> : "Generate variants to set stock for each sellable combination."}</p> : null}
         </CardContent>
       </Card>
 
       <Card>
-        <CardHeader className="border-b"><div><CardTitle as="h2">Product variants</CardTitle><p className="mt-1 text-sm text-muted-foreground">Add combinations such as Size: Large, Colour: Black or Storage: 256GB.</p></div><Button onClick={() => setVariants((current) => [...current, defaultVariant(values.sellingPrice, values.costPrice)])} size="sm" type="button" variant="outline"><Plus aria-hidden="true" />Add variant</Button></CardHeader>
+        <CardHeader><CardTitle as="h2">Product specifications</CardTitle><p className="text-sm text-muted-foreground">Add fixed details shared by every item, such as dimensions. These do not create separate stock records.</p></CardHeader>
         <CardContent className="grid gap-4">
-          {variants.length ? variants.map((variant, index) => (
-            <section className="grid gap-4 rounded-xl border p-4" key={variant.id}>
-              <div className="flex items-center justify-between"><h3 className="font-medium">Variant {index + 1}</h3><Button aria-label={`Remove variant ${index + 1}`} onClick={() => setVariants((current) => current.filter((item) => item.id !== variant.id))} size="icon-sm" type="button" variant="ghost"><Trash2 aria-hidden="true" /></Button></div>
-              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                <label className="grid gap-2 text-sm font-medium">Variant name<Input maxLength={120} onChange={(event) => updateVariant(index, { name: event.currentTarget.value })} placeholder="Large / Black" value={variant.name} /></label>
-                <label className="grid gap-2 text-sm font-medium">Options<Input onChange={(event) => updateVariant(index, { attributes: event.currentTarget.value })} placeholder="Size: Large, Colour: Black" value={variant.attributes} /></label>
-                <label className="grid gap-2 text-sm font-medium">SKU <span className="font-normal text-muted-foreground">(optional)</span><Input maxLength={80} onChange={(event) => updateVariant(index, { sku: event.currentTarget.value })} value={variant.sku} /></label>
-                <label className="grid gap-2 text-sm font-medium">Selling price<Input min="0" onChange={(event) => updateVariant(index, { sellingPrice: event.currentTarget.value })} step="0.01" type="number" value={variant.sellingPrice} /></label>
-                <label className="grid gap-2 text-sm font-medium">Cost price<Input min="0" onChange={(event) => updateVariant(index, { costPrice: event.currentTarget.value })} step="0.01" type="number" value={variant.costPrice} /></label>
-                <label className="grid gap-2 text-sm font-medium">Stock quantity<Input min="0" onChange={(event) => updateVariant(index, { stockQuantity: event.currentTarget.value })} step="0.001" type="number" value={variant.stockQuantity} /></label>
-                <label className="grid gap-2 text-sm font-medium">Low-stock threshold<Input min="0" onChange={(event) => updateVariant(index, { lowStockThreshold: event.currentTarget.value })} step="0.001" type="number" value={variant.lowStockThreshold} /></label>
-                <label className="grid gap-2 text-sm font-medium">Variant image <span className="font-normal text-muted-foreground">(optional)</span><span className="flex h-8 cursor-pointer items-center gap-2 rounded-lg border border-dashed px-2.5 text-xs text-muted-foreground"><ImagePlus aria-hidden="true" className="size-4" /><span className="truncate">{variant.image?.name ?? "Choose image"}</span><input accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={(event) => chooseVariantImage(index, event)} type="file" /></span></label>
-              </div>
+          {specifications.map((specification, index) => (
+            <div className="grid gap-3 rounded-xl border p-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_100px_auto]" key={`${specification.name}:${index}`}>
+              <label className="grid gap-1 text-sm font-medium">Specification<Input maxLength={50} onChange={(event) => updateSpecification(index, { name: event.currentTarget.value })} placeholder="e.g. Length" value={specification.name} /></label>
+              <label className="grid gap-1 text-sm font-medium">Value<Input maxLength={120} onChange={(event) => updateSpecification(index, { value: event.currentTarget.value })} placeholder="e.g. 30" value={specification.value} /></label>
+              <label className="grid gap-1 text-sm font-medium">Unit<select className="h-10 rounded-lg border border-input bg-background px-3 text-sm" onChange={(event) => updateSpecification(index, { unit: event.currentTarget.value as ProductSpecification["unit"] })} value={specification.unit}><option value="">None</option><option value="cm">cm</option><option value="in">inches</option><option value="m">metres</option></select></label>
+              <Button aria-label={`Remove specification ${index + 1}`} className="self-end" onClick={() => setSpecifications((current) => current.filter((_, itemIndex) => itemIndex !== index))} size="icon" type="button" variant="ghost"><Trash2 aria-hidden="true" /></Button>
+            </div>
+          ))}
+          <div className="flex flex-wrap gap-2"><Button onClick={() => { setTouched((current) => ({ ...current, specifications: true })); setSpecifications((current) => [...current, { name: "Length", unit: "cm", value: "" }, { name: "Width", unit: "cm", value: "" }, { name: "Height", unit: "cm", value: "" }]) }} size="sm" type="button" variant="outline"><Plus aria-hidden="true" />Add dimensions</Button><Button onClick={() => { setTouched((current) => ({ ...current, specifications: true })); setSpecifications((current) => [...current, { name: "", unit: "", value: "" }]) }} size="sm" type="button" variant="outline"><Plus aria-hidden="true" />Add specification</Button></div>
+          {specificationError ? <p className="text-xs text-destructive" role="alert">{specificationError}</p> : null}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="border-b"><CardTitle as="h2">Selling options</CardTitle><p className="text-sm text-muted-foreground">Add choices customers can buy, then set price and stock for each combination.</p></CardHeader>
+        <CardContent className="grid gap-5">
+          <fieldset className="grid gap-3"><legend className="text-sm font-medium">Does this product have customer-selectable options?</legend><div className="grid gap-3 sm:grid-cols-2"><label className={`cursor-pointer rounded-xl border p-4 ${!hasOptions ? "border-primary bg-primary/5" : "hover:bg-muted/40"}`}><input checked={!hasOptions} className="sr-only" name="product-options" onChange={() => setProductOptionMode(false)} type="radio" /><strong className="block">No options</strong><span className="mt-1 block text-sm text-muted-foreground">Use one price and stock quantity for the product.</span></label><label className={`cursor-pointer rounded-xl border p-4 ${hasOptions ? "border-primary bg-primary/5" : "hover:bg-muted/40"}`}><input checked={hasOptions} className="sr-only" name="product-options" onChange={() => setProductOptionMode(true)} type="radio" /><strong className="block">This product has options</strong><span className="mt-1 block text-sm text-muted-foreground">For size, colour, length, storage, pack size, and more.</span></label></div></fieldset>
+
+          {hasOptions ? <>
+            <section className="grid gap-4 rounded-xl border bg-muted/20 p-4">
+              <div><h3 className="font-medium">1. Add customer choices</h3><p className="mt-1 text-sm text-muted-foreground">Use a measurement option only when it changes what a customer buys, such as 1 m or 2 m.</p></div>
+              <div className="flex flex-wrap gap-2">{optionPresets.map((preset) => <Button key={preset.name} onClick={() => addOptionGroup(preset.name, [...preset.values])} size="sm" type="button" variant="outline"><Plus aria-hidden="true" />{preset.name}</Button>)}<Button onClick={() => addOptionGroup()} size="sm" type="button" variant="outline"><Plus aria-hidden="true" />Custom</Button></div>
+              {optionGroups.map((group, index) => <div className="grid gap-3 rounded-xl border bg-background p-3 lg:grid-cols-[200px_minmax(0,1fr)_auto]" key={group.id}><label className="grid gap-1 text-sm font-medium">Option name<Input maxLength={50} onChange={(event) => updateOptionGroup(group.id, { name: event.currentTarget.value })} placeholder="e.g. Material" value={group.name} /></label><div className="grid gap-2"><span className="text-sm font-medium">Values</span><div className="flex flex-wrap gap-2">{group.values.map((value) => <span className="inline-flex items-center gap-1 rounded-full border bg-muted px-2.5 py-1 text-xs" key={value}>{value}<button aria-label={`Remove ${value}`} className="rounded-full text-muted-foreground hover:text-destructive" onClick={() => updateOptionGroup(group.id, { values: group.values.filter((item) => item !== value) })} type="button"><X aria-hidden="true" className="size-3" /></button></span>)}</div><div className="flex gap-2">{optionValueControl(group)}</div></div><Button aria-label={`Remove option ${index + 1}`} className="self-start lg:mt-6" onClick={() => setOptionGroups((current) => current.filter((item) => item.id !== group.id))} size="icon-sm" type="button" variant="ghost"><Trash2 aria-hidden="true" /></Button></div>)}
+              {duplicateOptionNames ? <p className="text-xs text-destructive">Each option needs a unique name.</p> : null}
+              <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-4"><p className="text-sm text-muted-foreground">{generatedCombinations.length ? `${generatedCombinations.length} sellable combination${generatedCombinations.length === 1 ? "" : "s"} ready to review.` : "Add a name and at least one value to every option."}{generatedCombinations.length > 100 ? " Keep the product to 100 combinations or fewer." : ""}</p><Button disabled={!canGenerateVariants} onClick={generateVariants} type="button"><Plus aria-hidden="true" />Review variants</Button></div>
             </section>
-          )) : <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">No variants. The product price and stock will be used directly.</p>}
+
+            {variants.length ? <section className="grid gap-4"><div className="flex flex-wrap items-end justify-between gap-3"><div><h3 className="font-medium">2. Set up sellable variants</h3><p className="mt-1 text-sm text-muted-foreground">Names and options are created automatically. Override price, stock, SKU, availability, or image where needed.</p></div><Button onClick={applyProductDefaults} size="sm" type="button" variant="outline">Use product price and cost</Button></div><div className="grid gap-3 rounded-xl border bg-muted/20 p-3 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)_auto]"><label className="grid gap-1 text-sm font-medium">Set stock for all<Input min="0" onChange={(event) => setBulkStockQuantity(event.currentTarget.value)} placeholder="e.g. 10" step="0.001" type="number" value={bulkStockQuantity} /></label><Button className="self-end" disabled={!bulkStockQuantity} onClick={applyBulkStock} type="button" variant="outline">Apply stock</Button><label className="grid gap-1 text-sm font-medium">SKU prefix for empty SKUs<Input maxLength={70} onChange={(event) => setBulkSkuPrefix(event.currentTarget.value)} placeholder="e.g. TSHIRT" value={bulkSkuPrefix} /></label><Button className="self-end" disabled={!bulkSkuPrefix.trim()} onClick={applySkuPrefix} type="button" variant="outline">Apply SKUs</Button></div>
+              {variants.map((variant, index) => <section className="grid gap-4 rounded-xl border p-4" key={variant.id}><div className="flex items-center justify-between gap-3"><div><h4 className="font-medium">{variant.name || `Variant ${index + 1}`}</h4><div className="mt-1 flex flex-wrap gap-1 text-xs text-muted-foreground">{variant.attributes.map((attribute) => <span className="rounded bg-muted px-1.5 py-0.5" key={`${attribute.name}:${attribute.value}`}>{attribute.name}: {attribute.value}</span>)}</div></div><label className="flex items-center gap-2 text-sm"><input checked={variant.isActive} className="size-4 accent-primary" onChange={(event) => updateVariant(index, { isActive: event.currentTarget.checked })} type="checkbox" />Available</label></div><div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">{variant.attributes.length ? null : <label className="grid gap-2 text-sm font-medium">Variant name<Input maxLength={120} onChange={(event) => updateVariant(index, { name: event.currentTarget.value })} value={variant.name} /></label>}<label className="grid gap-2 text-sm font-medium">SKU <span className="font-normal text-muted-foreground">(optional)</span><Input maxLength={80} onChange={(event) => updateVariant(index, { sku: event.currentTarget.value })} value={variant.sku} /></label><label className="grid gap-2 text-sm font-medium">Selling price<Input min="0" onChange={(event) => updateVariant(index, { sellingPrice: event.currentTarget.value })} step="0.01" type="number" value={variant.sellingPrice} /></label><label className="grid gap-2 text-sm font-medium">Cost price<Input min="0" onChange={(event) => updateVariant(index, { costPrice: event.currentTarget.value })} step="0.01" type="number" value={variant.costPrice} /></label><label className="grid gap-2 text-sm font-medium">Stock quantity<Input min="0" onChange={(event) => updateVariant(index, { stockQuantity: event.currentTarget.value })} step="0.001" type="number" value={variant.stockQuantity} /></label><label className="grid gap-2 text-sm font-medium">Low-stock threshold<Input min="0" onChange={(event) => updateVariant(index, { lowStockThreshold: event.currentTarget.value })} step="0.001" type="number" value={variant.lowStockThreshold} /></label><label className="grid gap-2 text-sm font-medium">Variant image <span className="font-normal text-muted-foreground">(optional)</span><span className="flex h-8 cursor-pointer items-center gap-2 rounded-lg border border-dashed px-2.5 text-xs text-muted-foreground"><ImagePlus aria-hidden="true" className="size-4" /><span className="truncate">{variant.image?.name ?? "Choose image"}</span><input accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={(event) => chooseVariantImage(index, event)} type="file" /></span></label></div></section>)}
+            </section> : <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">Add choices, then select Review variants to create the sellable combinations.</p>}
+          </> : <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">Customers will buy this as one product using the price and stock entered above.</p>}
           {variantError ? <p className="text-xs text-destructive" role="alert">{variantError}</p> : null}
         </CardContent>
       </Card>

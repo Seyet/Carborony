@@ -1,8 +1,9 @@
 "use client"
 
+import Image from "next/image"
 import { useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
-import { LoaderCircle, SlidersHorizontal } from "lucide-react"
+import { ImageIcon, LoaderCircle, SlidersHorizontal } from "lucide-react"
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
@@ -39,6 +40,15 @@ const operations = [
 
 type Operation = (typeof operations)[number]["value"]
 
+function variantDetails(variant: InventoryProduct["variants"][number]) {
+  return variant.attributes.map((attribute) => `${attribute.name}: ${attribute.value}`).join(" · ")
+}
+
+function variantLabel(variant: InventoryProduct["variants"][number]) {
+  const details = variantDetails(variant)
+  return details ? `${variant.name} — ${details}` : variant.name
+}
+
 export function StockOperationDialog({ product }: { product: InventoryProduct }) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
@@ -49,6 +59,7 @@ export function StockOperationDialog({ product }: { product: InventoryProduct })
   const [variantId, setVariantId] = useState<string | null>(product.variants[0]?.id ?? null)
   const selectedOperation = operations.find((item) => item.value === operation) ?? operations[0]
   const selectedVariant = product.variants.find((variant) => variant.id === variantId) ?? null
+  const selectedImageUrl = selectedVariant?.imageUrl ?? product.imageUrl
   const currentStock = selectedVariant?.stockQuantity ?? product.stockQuantity
   const parsedQuantity = quantity === "" ? Number.NaN : Number(quantity)
   const reducesStock = operation === "remove" || operation === "damage" || operation === "loss"
@@ -112,6 +123,28 @@ export function StockOperationDialog({ product }: { product: InventoryProduct })
           </DialogHeader>
 
           <div className="grid gap-4">
+            <div className="flex items-center gap-3 rounded-xl border bg-muted/30 p-3">
+              <span className="relative flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-muted text-muted-foreground">
+                {selectedImageUrl ? (
+                  <Image
+                    alt={selectedVariant ? variantLabel(selectedVariant) : product.name}
+                    className="object-cover"
+                    fill
+                    sizes="64px"
+                    src={selectedImageUrl}
+                    unoptimized
+                  />
+                ) : <ImageIcon aria-hidden="true" className="size-5" />}
+              </span>
+              <span className="min-w-0">
+                <strong className="block truncate text-sm">{selectedVariant?.name ?? product.name}</strong>
+                <span className="mt-0.5 block text-xs text-muted-foreground">
+                  {selectedVariant
+                    ? variantDetails(selectedVariant) || selectedVariant.sku || "Product variant"
+                    : product.sku ?? "Base product"}
+                </span>
+              </span>
+            </div>
             {product.variants.length ? (
               <div className="grid gap-1.5">
                 <label className="text-sm font-medium" htmlFor={`variant-${product.id}`}>Product variant</label>
@@ -125,9 +158,20 @@ export function StockOperationDialog({ product }: { product: InventoryProduct })
                   }}
                   value={variantId}
                 >
-                  <SelectTrigger className="w-full" id={`variant-${product.id}`}><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="w-full" id={`variant-${product.id}`}>
+                    <SelectValue>{selectedVariant ? variantLabel(selectedVariant) : "Select a variant"}</SelectValue>
+                  </SelectTrigger>
                   <SelectContent align="start">
-                    {product.variants.map((variant) => <SelectItem key={variant.id} value={variant.id}>{variant.name} · {variant.stockQuantity.toLocaleString()} in stock</SelectItem>)}
+                    {product.variants.map((variant) => (
+                      <SelectItem key={variant.id} value={variant.id}>
+                        <span className="min-w-0">
+                          <span className="block font-medium">{variant.name}</span>
+                          <span className="block text-xs text-muted-foreground">
+                            {variantDetails(variant) || variant.sku || "Product variant"} · {variant.stockQuantity.toLocaleString()} in stock
+                          </span>
+                        </span>
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>

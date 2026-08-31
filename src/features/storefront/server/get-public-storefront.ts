@@ -4,7 +4,7 @@ import { cache } from "react"
 
 import { createClient } from "@/lib/supabase/server"
 import type { Json } from "@/types/database"
-import type { PublicStorefront, StorefrontDeliveryZone, StorefrontProduct, StorefrontVariant } from "../types"
+import type { PublicStorefront, StorefrontDeliveryZone, StorefrontProduct, StorefrontSpecification, StorefrontVariant } from "../types"
 import { publicStorageUrl } from "./media-url"
 
 type JsonRecord = Record<string, Json | undefined>
@@ -31,17 +31,38 @@ function mapVariants(value: Json): StorefrontVariant[] {
         : {},
     ).filter((entry): entry is [string, string] => typeof entry[1] === "string")),
     id: textValue(variant.id),
+    imageUrls: [],
     name: textValue(variant.name),
     sellingPrice: numberValue(variant.selling_price),
+    sku: typeof variant.sku === "string" ? variant.sku : null,
     stockQuantity: numberValue(variant.stock_quantity),
+  }))
+}
+
+function mapSpecifications(value: Json): StorefrontSpecification[] {
+  return records([value]).flatMap((specifications) => Object.entries(specifications).flatMap(([name, specification]) => {
+    if (!specification || Array.isArray(specification) || typeof specification !== "object") return []
+    const value = specification.value
+    const unit = specification.unit
+    if (typeof value !== "string") return []
+    return [{
+      name,
+      unit: unit === "cm" || unit === "in" || unit === "m" ? unit : "",
+      value,
+    }]
   }))
 }
 
 function mapMedia(value: Json) {
   return records(value)
     .filter((media) => media.media_kind === "image")
-    .map((media) => publicStorageUrl("product-media", textValue(media.storage_path)))
-    .filter((url): url is string => Boolean(url))
+    .flatMap((media) => {
+      const url = publicStorageUrl("product-media", textValue(media.storage_path))
+      return url ? [{
+        url,
+        variantId: typeof media.variant_id === "string" ? media.variant_id : null,
+      }] : []
+    })
 }
 
 function mapDeliveryZones(value: Json): StorefrontDeliveryZone[] {
@@ -78,20 +99,30 @@ export const getPublicStorefront = cache(async (
   const store = storeResult.data
   if (!store) return null
 
-  const products: StorefrontProduct[] = (productsResult.data ?? []).map((product) => ({
-    availableStock: product.available_stock === null ? null : Number(product.available_stock),
-    categoryId: product.category_id,
-    categoryName: product.category_name,
-    description: product.description,
-    discountPrice: product.discount_price === null ? null : Number(product.discount_price),
-    id: product.product_id,
-    imageUrls: mapMedia(product.media),
-    isFeatured: product.is_featured,
-    name: product.product_name,
-    sellingPrice: Number(product.selling_price),
-    trackInventory: product.track_inventory,
-    variants: mapVariants(product.variants),
-  }))
+  const products: StorefrontProduct[] = (productsResult.data ?? []).map((product) => {
+    const media = mapMedia(product.media)
+    const variants = mapVariants(product.variants).map((variant) => ({
+      ...variant,
+      imageUrls: media.filter((item) => item.variantId === variant.id).map((item) => item.url),
+    }))
+    const productImageUrls = media.filter((item) => item.variantId === null).map((item) => item.url)
+
+    return {
+      availableStock: product.available_stock === null ? null : Number(product.available_stock),
+      categoryId: product.category_id,
+      categoryName: product.category_name,
+      description: product.description,
+      discountPrice: product.discount_price === null ? null : Number(product.discount_price),
+      id: product.product_id,
+      imageUrls: productImageUrls,
+      isFeatured: product.is_featured,
+      name: product.product_name,
+      sellingPrice: Number(product.selling_price),
+      specifications: mapSpecifications(product.specifications),
+      trackInventory: product.track_inventory,
+      variants,
+    }
+  })
 
   return {
     businessId: store.business_id,
