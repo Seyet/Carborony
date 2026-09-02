@@ -344,10 +344,13 @@ export function ProductForm({
           <select
             aria-label="Length unit"
             className="h-8 rounded-lg border border-input bg-background px-2.5 text-sm"
-            onChange={(event) => setOptionMeasurementUnits((current) => ({
-              ...current,
-              [group.id]: event.currentTarget.value as MeasurementUnit,
-            }))}
+            onChange={(event) => {
+              const measurementUnit = event.currentTarget.value as MeasurementUnit
+              setOptionMeasurementUnits((current) => ({
+                ...current,
+                [group.id]: measurementUnit,
+              }))
+            }}
             value={optionMeasurementUnits[group.id] ?? "cm"}
           >
             <option value="cm">cm</option>
