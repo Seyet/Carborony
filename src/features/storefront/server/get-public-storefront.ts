@@ -4,6 +4,7 @@ import { cache } from "react"
 
 import { createClient } from "@/lib/supabase/server"
 import type { Json } from "@/types/database"
+import { storefrontCopy } from "../copy"
 import type { PublicStorefront, StorefrontDeliveryZone, StorefrontProduct, StorefrontSpecification, StorefrontVariant } from "../types"
 import { publicStorageUrl } from "./media-url"
 
@@ -136,6 +137,7 @@ export const getPublicStorefront = cache(async (
       bankTransferInstructions: store.bank_transfer_instructions,
       contactEmail: store.contact_email,
       contactPhone: store.contact_phone,
+      copy: storefrontCopy(store.storefront_copy, store.business_name, store.delivery_enabled),
       deliveryZones: mapDeliveryZones(store.delivery_zones),
       deliveryEnabled: store.delivery_enabled,
       heroBannerUrl: publicStorageUrl("storefront-media", store.hero_banner_path),

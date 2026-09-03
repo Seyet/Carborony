@@ -2,6 +2,7 @@ import "server-only"
 
 import { getCurrentBusiness } from "@/features/businesses/server/get-current-business"
 import { createClient } from "@/lib/supabase/server"
+import { storefrontCopy } from "../copy"
 import type { StorefrontAdminData } from "../types"
 import { publicStorageUrl } from "./media-url"
 
@@ -70,6 +71,7 @@ export async function getStorefrontAdminData(): Promise<StorefrontAdminData> {
       bankTransferInstructions: storefront.bank_transfer_instructions,
       contactEmail: storefront.contact_email,
       contactPhone: storefront.contact_phone,
+      copy: storefrontCopy(storefront.storefront_copy, business.name, storefront.delivery_enabled),
       deliveryZones: (zonesResult.data ?? []).map((zone) => ({
         coverageDetails: zone.coverage_details,
         deliveryFee: Number(zone.delivery_fee),

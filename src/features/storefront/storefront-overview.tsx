@@ -55,6 +55,16 @@ export function StorefrontOverview({ data }: { data: StorefrontAdminData }) {
     }))
   }
 
+  function updateCopy<Key extends keyof StorefrontAdminData["settings"]["copy"]>(
+    key: Key,
+    value: StorefrontAdminData["settings"]["copy"][Key],
+  ) {
+    setSettings((current) => ({
+      ...current,
+      copy: { ...current.copy, [key]: value },
+    }))
+  }
+
   function removeDeliveryZone(id: string) {
     setSettings((current) => ({
       ...current,
@@ -227,7 +237,21 @@ export function StorefrontOverview({ data }: { data: StorefrontAdminData }) {
               <CardHeader><CardTitle>Homepage preview</CardTitle></CardHeader>
               <CardContent>
                 {settings.announcement ? <p className="mb-5 rounded-lg px-3 py-2 text-center text-xs text-white" style={{ backgroundColor: settings.primaryColor }}>{settings.announcement}</p> : null}
-                <div className="overflow-hidden rounded-xl bg-muted text-center">{settings.heroBannerUrl ? <div className="relative aspect-[3/1]"><Image alt="Website hero banner" fill className="object-cover" sizes="320px" src={settings.heroBannerUrl} unoptimized /></div> : <div className="p-5"><Store aria-hidden="true" className="mx-auto size-8" style={{ color: settings.primaryColor }} /></div>}<div className="p-5"><h3 className="text-xl font-semibold">{settings.heroTitle || "Your headline"}</h3><p className="mt-2 text-sm text-muted-foreground">{settings.heroSubtitle || "Your store description appears here."}</p><span className="mt-5 inline-flex rounded-lg px-4 py-2 text-sm font-medium text-white" style={{ backgroundColor: settings.primaryColor }}>Shop now</span></div></div>
+                <div className="overflow-hidden rounded-xl bg-muted text-center">{settings.heroBannerUrl ? <div className="relative aspect-[3/1]"><Image alt="Website hero banner" fill className="object-cover" sizes="320px" src={settings.heroBannerUrl} unoptimized /></div> : <div className="p-5"><Store aria-hidden="true" className="mx-auto size-8" style={{ color: settings.primaryColor }} /></div>}<div className="p-5"><p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: settings.primaryColor }}>{settings.copy.heroEyebrow}</p><h3 className="mt-2 text-xl font-semibold">{settings.heroTitle || "Your headline"}</h3><p className="mt-2 text-sm text-muted-foreground">{settings.heroSubtitle || "Your store description appears here."}</p><span className="mt-5 inline-flex rounded-lg px-4 py-2 text-sm font-medium text-white" style={{ backgroundColor: settings.primaryColor }}>{settings.copy.heroCtaLabel}</span></div></div>
+              </CardContent>
+            </Card>
+
+            <Card className="lg:col-span-2">
+              <CardHeader><CardTitle as="h2">Storefront wording</CardTitle><CardDescription>Make the customer-facing messages sound like your brand. These changes appear throughout the homepage.</CardDescription></CardHeader>
+              <CardContent className="grid gap-6">
+                <div><h3 className="text-sm font-semibold">Hero</h3><p className="mt-1 text-xs text-muted-foreground">The small welcome label and main shopping button.</p><div className="mt-3 grid gap-4 sm:grid-cols-2"><label className={fieldClass}>Welcome label<Input maxLength={80} onChange={(event) => updateCopy("heroEyebrow", event.currentTarget.value)} placeholder={`Welcome to ${data.businessName}`} value={settings.copy.heroEyebrow} /></label><label className={fieldClass}>Button label<Input maxLength={40} onChange={(event) => updateCopy("heroCtaLabel", event.currentTarget.value)} placeholder="Shop the collection" value={settings.copy.heroCtaLabel} /></label></div></div>
+                <div className="border-t pt-5"><h3 className="text-sm font-semibold">Catalogue introduction</h3><p className="mt-1 text-xs text-muted-foreground">The message customers see above your product grid.</p><div className="mt-3 grid gap-4 sm:grid-cols-2"><label className={fieldClass}>Section label<Input maxLength={60} onChange={(event) => updateCopy("catalogueEyebrow", event.currentTarget.value)} value={settings.copy.catalogueEyebrow} /></label><label className={fieldClass}>Section title<Input maxLength={80} onChange={(event) => updateCopy("catalogueTitle", event.currentTarget.value)} value={settings.copy.catalogueTitle} /></label><label className={`${fieldClass} sm:col-span-2`}>Section description<Textarea maxLength={160} onChange={(event) => updateCopy("catalogueDescription", event.currentTarget.value)} rows={2} value={settings.copy.catalogueDescription} /></label></div></div>
+                <div className="border-t pt-5"><h3 className="text-sm font-semibold">Customer reassurance</h3><p className="mt-1 text-xs text-muted-foreground">Three short promises shown between the hero and catalogue.</p><div className="mt-3 grid gap-4 lg:grid-cols-3">{([
+                  ["trustOneTitle", "trustOneDescription", "First message"],
+                  ["trustTwoTitle", "trustTwoDescription", "Second message"],
+                  ["trustThreeTitle", "trustThreeDescription", "Third message"],
+                ] as const).map(([titleKey, descriptionKey, label]) => <div className="grid gap-3 rounded-xl border bg-muted/15 p-4" key={titleKey}><p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{label}</p><label className={fieldClass}>Title<Input maxLength={50} onChange={(event) => updateCopy(titleKey, event.currentTarget.value)} value={settings.copy[titleKey]} /></label><label className={fieldClass}>Description<Textarea maxLength={100} onChange={(event) => updateCopy(descriptionKey, event.currentTarget.value)} rows={2} value={settings.copy[descriptionKey]} /></label></div>)}</div></div>
+                <div className="border-t pt-5"><label className={fieldClass}>Footer tagline <span className="font-normal text-muted-foreground">(shown beside your contact details)</span><Textarea maxLength={240} onChange={(event) => updateCopy("footerTagline", event.currentTarget.value)} rows={3} value={settings.copy.footerTagline} /></label></div>
               </CardContent>
             </Card>
           </div>

@@ -5,8 +5,10 @@ import { ArrowLeft } from "lucide-react"
 
 import { AuthCard } from "@/features/auth/components/auth-card"
 import { ResetPasswordForm } from "@/features/auth/components/reset-password-form"
+import { hasRecentEmailProof } from "@/features/auth/server/password-security"
 import { getCurrentUser } from "@/lib/auth/session"
 import { isSupabaseConfigured } from "@/lib/supabase/env"
+import { createClient } from "@/lib/supabase/server"
 
 export const metadata: Metadata = {
   description: "Choose a new password for your Carborony account.",
@@ -21,6 +23,15 @@ export default async function ResetPasswordPage() {
   const user = await getCurrentUser()
 
   if (!user) {
+    redirect("/forgot-password")
+  }
+
+  const supabase = await createClient()
+  const assurance = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+  if (
+    assurance.error
+    || !hasRecentEmailProof(user, assurance.data.currentAuthenticationMethods)
+  ) {
     redirect("/forgot-password")
   }
 

@@ -93,7 +93,7 @@ export async function getOrderDetails(orderId: string): Promise<OrderDetailsData
   if (!orderResult.data) throw new ApiError(404, "ORDER_NOT_FOUND", "This order could not be found.")
 
   const order = orderResult.data
-  const [itemsResult, historyResult, customerResult] = await Promise.all([
+  const [itemsResult, historyResult, customerResult, settingsResult] = await Promise.all([
     supabase.from("order_items")
       .select("id, item_source, product_name, variant_name, sku, quantity, unit_price, discount_amount, line_total")
       .eq("business_id", business.id)
@@ -108,9 +108,13 @@ export async function getOrderDetails(orderId: string): Promise<OrderDetailsData
       ? supabase.from("customers").select("full_name, email, phone")
           .eq("business_id", business.id).eq("id", order.customer_id).maybeSingle()
       : Promise.resolve({ data: null, error: null }),
+    supabase.from("businesses")
+      .select("date_format, locale, time_format, timezone")
+      .eq("id", business.id)
+      .single(),
   ])
 
-  const firstError = itemsResult.error ?? historyResult.error ?? customerResult.error
+  const firstError = itemsResult.error ?? historyResult.error ?? customerResult.error ?? settingsResult.error
   if (firstError) {
     if (isSetupError(firstError.code)) throw new OrdersSetupRequiredError()
     throw new Error("Unable to load order details.", { cause: firstError })
@@ -128,6 +132,12 @@ export async function getOrderDetails(orderId: string): Promise<OrderDetailsData
     deliveryZoneName: order.delivery_zone_name,
     discountAmount: Number(order.discount_amount),
     fulfillmentStatus: order.fulfillment_status,
+    formatting: {
+      dateFormat: settingsResult.data?.date_format as OrderDetailsData["formatting"]["dateFormat"] ?? "day_month_year",
+      locale: settingsResult.data?.locale ?? "en-NG",
+      timeFormat: settingsResult.data?.time_format as OrderDetailsData["formatting"]["timeFormat"] ?? "12h",
+      timeZone: settingsResult.data?.timezone ?? "Africa/Lagos",
+    },
     history: (historyResult.data ?? []).map((entry) => ({
       changedBy: entry.changed_by ? "Team member" : "Storefront customer",
       createdAt: entry.created_at,

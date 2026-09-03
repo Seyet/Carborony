@@ -11,25 +11,10 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import type { TransactionDocumentData } from "../documents/types"
-
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat("en-NG", {
-    dateStyle: "long",
-    timeStyle: "short",
-    timeZone: "Africa/Lagos",
-  }).format(new Date(value))
-}
-
-function formatMoney(currencyCode: string, amount: number) {
-  return new Intl.NumberFormat("en", {
-    currency: currencyCode,
-    currencyDisplay: "narrowSymbol",
-    style: "currency",
-  }).format(amount)
-}
+import { formatBusinessDateTime, formatBusinessMoney } from "@/lib/formatting"
 
 export function TransactionDetails({ data }: { data: TransactionDocumentData }) {
-  const money = (amount: number) => formatMoney(data.currencyCode, amount)
+  const money = (amount: number) => formatBusinessMoney(amount, data.currencyCode, data.formatting.locale)
 
   return (
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
@@ -77,7 +62,7 @@ export function TransactionDetails({ data }: { data: TransactionDocumentData }) 
         <Card>
           <CardHeader><CardTitle>Transaction</CardTitle></CardHeader>
           <CardContent className="space-y-3 text-sm">
-            <div className="flex items-center gap-3"><CalendarDays aria-hidden="true" className="size-4 text-muted-foreground" /><span>{formatDate(data.issuedAt)}</span></div>
+            <div className="flex items-center gap-3"><CalendarDays aria-hidden="true" className="size-4 text-muted-foreground" /><span>{formatBusinessDateTime(data.issuedAt, data.formatting)}</span></div>
             <div className="flex items-start gap-3"><CreditCard aria-hidden="true" className="mt-0.5 size-4 text-muted-foreground" /><div><p className="capitalize">{data.paymentMethod}</p><p className="mt-0.5 text-xs capitalize text-muted-foreground">Payment status: {data.paymentStatus ?? "Not available"}</p></div></div>
             <div className="flex items-center gap-3"><Building2 aria-hidden="true" className="size-4 text-muted-foreground" /><span>{data.business.name}</span></div>
             <div className="flex items-center justify-between border-t pt-3"><span className="text-muted-foreground">Status</span><Badge className="capitalize" variant="secondary">{data.status}</Badge></div>

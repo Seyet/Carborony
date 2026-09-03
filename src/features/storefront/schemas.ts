@@ -9,6 +9,9 @@ const deliveryZoneSchema = z.object({
   name: z.string().trim().min(2, "Enter a zone name.").max(80),
   position: z.number().int().nonnegative(),
 })
+const requiredCopy = (label: string, maximum: number) => z.string().trim()
+  .min(1, `${label} is required.`)
+  .max(maximum, `${label} must be ${maximum} characters or fewer.`)
 
 export const storefrontSettingsSchema = z.object({
   announcement: nullableText(160),
@@ -16,6 +19,20 @@ export const storefrontSettingsSchema = z.object({
   bankTransferInstructions: nullableText(1000),
   contactEmail: z.union([z.email("Enter a valid contact email."), z.literal("")]).nullable(),
   contactPhone: nullableText(32),
+  copy: z.object({
+    catalogueDescription: requiredCopy("Catalogue description", 160),
+    catalogueEyebrow: requiredCopy("Catalogue label", 60),
+    catalogueTitle: requiredCopy("Catalogue title", 80).min(2),
+    footerTagline: requiredCopy("Footer tagline", 240).min(2),
+    heroCtaLabel: requiredCopy("Hero button label", 40),
+    heroEyebrow: requiredCopy("Hero label", 80),
+    trustOneDescription: requiredCopy("First reassurance description", 100).min(2),
+    trustOneTitle: requiredCopy("First reassurance title", 50),
+    trustThreeDescription: requiredCopy("Third reassurance description", 100).min(2),
+    trustThreeTitle: requiredCopy("Third reassurance title", 50),
+    trustTwoDescription: requiredCopy("Second reassurance description", 100).min(2),
+    trustTwoTitle: requiredCopy("Second reassurance title", 50),
+  }),
   deliveryZones: z.array(deliveryZoneSchema).max(100),
   deliveryEnabled: z.boolean(),
   featuredProductIds: z.array(z.uuid()).max(1000),

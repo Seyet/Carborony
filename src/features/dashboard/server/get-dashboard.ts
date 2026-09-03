@@ -24,9 +24,11 @@ type DashboardMetrics = {
 export type DashboardData = {
   alerts: DashboardAlert[]
   currencyCode: string
+  locale: string
   metrics: DashboardMetrics
   previousMetrics: DashboardMetrics
   salesOverview: DashboardSalesPoint[]
+  timeFormat: "12h" | "24h"
   timeZone: string
   topProducts: DashboardTopProduct[]
   transactions: DashboardTransaction[]
@@ -78,7 +80,7 @@ export async function getDashboardData(startDate: string, endDate: string): Prom
   const previous = previousRange(startDate, endDate)
   const previousRangeArgs = { range_end: previous.end, range_start: previous.start, target_business_id: business.id }
   const [settingsResult, metricsResult, previousMetricsResult, overviewResult, productsResult, transactionsResult] = await Promise.all([
-    supabase.from("businesses").select("currency_code, timezone").eq("id", business.id).single(),
+    supabase.from("businesses").select("currency_code, locale, time_format, timezone").eq("id", business.id).single(),
     supabase.rpc("get_dashboard_metrics", currentRange).single(),
     supabase.rpc("get_dashboard_metrics", previousRangeArgs).single(),
     supabase.rpc("get_dashboard_sales_overview", currentRange),
@@ -97,9 +99,11 @@ export async function getDashboardData(startDate: string, endDate: string): Prom
       ...(metrics.pendingOrdersCount ? [{ count: metrics.pendingOrdersCount, href: "/app/orders", kind: "pending-orders" as const }] : []),
     ],
     currencyCode: settingsResult.data?.currency_code ?? "NGN",
+    locale: settingsResult.data?.locale ?? "en-NG",
     metrics,
     previousMetrics: mapMetrics(previousMetricsResult.data),
     salesOverview: (overviewResult.data ?? []).map((entry) => ({ label: entry.period_date, value: asNumber(entry.sales_total) })),
+    timeFormat: settingsResult.data?.time_format === "24h" ? "24h" : "12h",
     timeZone: settingsResult.data?.timezone ?? "Africa/Lagos",
     topProducts: (productsResult.data ?? []).map((product) => ({
       category: product.category_name,

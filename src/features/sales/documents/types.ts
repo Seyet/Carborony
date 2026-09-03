@@ -28,6 +28,12 @@ export type TransactionDocumentData = {
   } | null
   discountAmount: number
   deliveryAddress: string | null
+  formatting: {
+    dateFormat: "day_month_year" | "month_day_year" | "year_month_day"
+    locale: string
+    timeFormat: "12h" | "24h"
+    timeZone: string
+  }
   id: string
   issuedAt: string
   items: TransactionDocumentLine[]

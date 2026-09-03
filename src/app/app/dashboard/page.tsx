@@ -3,6 +3,8 @@ import type { Metadata } from "next"
 import { getCurrentBusiness } from "@/features/businesses/server/get-current-business"
 import { DashboardOverview } from "@/features/dashboard/dashboard-overview"
 import { getDashboardData } from "@/features/dashboard/server/get-dashboard"
+import { createClient } from "@/lib/supabase/server"
+import { formatBusinessDate } from "@/lib/formatting"
 
 export const metadata: Metadata = {
   title: "Dashboard",
@@ -16,13 +18,11 @@ type DashboardPageProps = {
   }>
 }
 
-const dashboardTimeZone = "Africa/Lagos"
-
-function getTodayDate() {
+function getTodayDate(timeZone: string) {
   return new Intl.DateTimeFormat("en-CA", {
     day: "2-digit",
     month: "2-digit",
-    timeZone: dashboardTimeZone,
+    timeZone,
     year: "numeric",
   }).format(new Date())
 }
@@ -38,13 +38,8 @@ function isValidDate(value: string) {
   )
 }
 
-function formatDateLabel(value: string) {
-  return new Intl.DateTimeFormat("en-NG", {
-    day: "numeric",
-    month: "short",
-    timeZone: "UTC",
-    year: "numeric",
-  }).format(new Date(`${value}T00:00:00Z`))
+function formatDateLabel(value: string, preferences: Parameters<typeof formatBusinessDate>[1]) {
+  return formatBusinessDate(value + "T00:00:00Z", { ...preferences, timeZone: "UTC" })
 }
 
 function getFirstValue(value: string | string[] | undefined) {
@@ -59,7 +54,21 @@ export default async function DashboardPage({
   searchParams,
 }: DashboardPageProps) {
   const [business, query] = await Promise.all([getCurrentBusiness(), searchParams])
-  const todayDate = getTodayDate()
+  const supabase = await createClient()
+  const settingsResult = await supabase.from("businesses")
+    .select("date_format, locale, time_format, timezone")
+    .eq("id", business.id)
+    .single()
+  if (settingsResult.error || !settingsResult.data) {
+    throw new Error("Unable to load dashboard regional settings.", { cause: settingsResult.error })
+  }
+  const preferences = {
+    dateFormat: settingsResult.data.date_format as Parameters<typeof formatBusinessDate>[1]["dateFormat"],
+    locale: settingsResult.data.locale,
+    timeFormat: settingsResult.data.time_format as Parameters<typeof formatBusinessDate>[1]["timeFormat"],
+    timeZone: settingsResult.data.timezone,
+  }
+  const todayDate = getTodayDate(preferences.timeZone)
   const legacyDate = getSafeDate(getFirstValue(query.date), todayDate)
   const requestedStart = getSafeDate(getFirstValue(query.start), todayDate)
   const requestedEnd = getSafeDate(getFirstValue(query.end), todayDate)
@@ -69,8 +78,8 @@ export default async function DashboardPage({
     firstDate <= secondDate
       ? [firstDate, secondDate]
       : [secondDate, firstDate]
-  const startDateLabel = formatDateLabel(startDate)
-  const endDateLabel = formatDateLabel(endDate)
+  const startDateLabel = formatDateLabel(startDate, preferences)
+  const endDateLabel = formatDateLabel(endDate, preferences)
   const dateRangeLabel =
     startDate === endDate
       ? startDateLabel

@@ -8,6 +8,7 @@ import {
 } from "pdf-lib"
 
 import type { TransactionDocumentData } from "./types"
+import { formatBusinessDateTime, formatBusinessNumber } from "@/lib/formatting"
 
 const pageMargin = 48
 const textColor = rgb(0.11, 0.13, 0.16)
@@ -26,19 +27,11 @@ function pdfText(value: string) {
     .replace(/[^\x20-\x7E\xA0-\xFF]/g, "?")
 }
 
-function formatAmount(currencyCode: string, amount: number) {
-  return `${currencyCode} ${new Intl.NumberFormat("en-US", {
+function formatAmount(currencyCode: string, amount: number, locale: string) {
+  return `${currencyCode} ${new Intl.NumberFormat(locale, {
     maximumFractionDigits: 2,
     minimumFractionDigits: 2,
   }).format(amount)}`
-}
-
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat("en-GB", {
-    dateStyle: "medium",
-    timeStyle: "short",
-    timeZone: "Africa/Lagos",
-  }).format(new Date(value))
 }
 
 function drawRight(
@@ -109,7 +102,7 @@ export async function generateTransactionPdf(data: TransactionDocumentData) {
   pdf.setAuthor(data.business.name)
   pdf.setCreator("Carborony")
   pdf.setProducer("Carborony")
-  pdf.setSubject(`${documentTitle} for ${formatAmount(data.currencyCode, data.totalAmount)}`)
+  pdf.setSubject(`${documentTitle} for ${formatAmount(data.currencyCode, data.totalAmount, data.formatting.locale)}`)
 
   let page = pdf.addPage(PageSizes.A4)
   let y = page.getHeight() - pageMargin
@@ -179,7 +172,7 @@ export async function generateTransactionPdf(data: TransactionDocumentData) {
   const metaX = 338
   const metaRight = page.getWidth() - pageMargin
   const metaRows = [
-    ["Issued", formatDate(data.issuedAt)],
+    ["Issued", formatBusinessDateTime(data.issuedAt, data.formatting)],
     ...(data.channel ? [["Channel", data.channel.replaceAll("_", " ")]] : []),
     ["Status", data.status],
     ["Payment method", data.paymentMethod],
@@ -266,10 +259,10 @@ export async function generateTransactionPdf(data: TransactionDocumentData) {
       page.drawText(pdfText(secondary), { color: mutedColor, font: regular, size: 7.5, x: pageMargin + 8, y: nameY - 1 })
     }
 
-    drawRight(page, new Intl.NumberFormat("en-US", { maximumFractionDigits: 3 }).format(item.quantity), 318, y - 14, regular, 8.5)
-    drawRight(page, formatAmount(data.currencyCode, item.unitPrice), 405, y - 14, regular, 8.5)
-    drawRight(page, formatAmount(data.currencyCode, item.discountAmount), 477, y - 14, regular, 8.5)
-    drawRight(page, formatAmount(data.currencyCode, item.lineTotal), page.getWidth() - pageMargin - 8, y - 14, bold, 8.5)
+    drawRight(page, formatBusinessNumber(item.quantity, data.formatting.locale), 318, y - 14, regular, 8.5)
+    drawRight(page, formatAmount(data.currencyCode, item.unitPrice, data.formatting.locale), 405, y - 14, regular, 8.5)
+    drawRight(page, formatAmount(data.currencyCode, item.discountAmount, data.formatting.locale), 477, y - 14, regular, 8.5)
+    drawRight(page, formatAmount(data.currencyCode, item.lineTotal, data.formatting.locale), page.getWidth() - pageMargin - 8, y - 14, bold, 8.5)
 
     y -= rowHeight
     page.drawLine({
@@ -309,7 +302,7 @@ export async function generateTransactionPdf(data: TransactionDocumentData) {
   const summaryRight = page.getWidth() - pageMargin
   for (const [label, amount] of summaryRows) {
     page.drawText(label, { color: mutedColor, font: regular, size: 9, x: summaryLeft, y })
-    drawRight(page, formatAmount(data.currencyCode, amount), summaryRight, y, regular, 9)
+    drawRight(page, formatAmount(data.currencyCode, amount, data.formatting.locale), summaryRight, y, regular, 9)
     y -= 18
   }
 
@@ -330,7 +323,7 @@ export async function generateTransactionPdf(data: TransactionDocumentData) {
     x: summaryLeft + 4,
     y: y + 2,
   })
-  drawRight(page, formatAmount(data.currencyCode, data.totalAmount), summaryRight - 4, y + 1, bold, 11, rgb(1, 1, 1))
+  drawRight(page, formatAmount(data.currencyCode, data.totalAmount, data.formatting.locale), summaryRight - 4, y + 1, bold, 11, rgb(1, 1, 1))
 
   y -= 52
   page.drawText(data.kind === "invoice" ? "Thank you. Please reference the invoice number when making payment." : "Thank you for your business.", {

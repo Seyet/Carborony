@@ -23,6 +23,7 @@ import { ApiError, type JsonHandlerResult } from "@/lib/api/server"
 import { getSafeNextPath } from "@/lib/auth/redirect"
 import { isSupabaseConfigured } from "@/lib/supabase/env"
 import { createClient } from "@/lib/supabase/server"
+import { hasRecentEmailProof } from "./password-security"
 
 const configurationMessage =
   "Authentication is unavailable because the service is not configured correctly."
@@ -352,6 +353,21 @@ export async function resetPassword(
       401,
       "RECOVERY_SESSION_EXPIRED",
       "This recovery session has expired. Request a new reset link.",
+    )
+  }
+
+  const assurance = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+  if (
+    assurance.error
+    || !hasRecentEmailProof(
+      user,
+      assurance.data.currentAuthenticationMethods,
+    )
+  ) {
+    throw new ApiError(
+      403,
+      "RECOVERY_VERIFICATION_REQUIRED",
+      "Request a new password reset link before choosing a password.",
     )
   }
 

@@ -16,7 +16,7 @@ import {
 } from "lucide-react"
 
 import { AppLogo } from "@/components/common/app-logo"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -230,6 +230,7 @@ function UserMenu({
           }
         >
           <Avatar>
+            {user.avatarUrl ? <AvatarImage alt="" src={user.avatarUrl} /> : null}
             <AvatarFallback className="bg-primary text-xs font-semibold text-primary-foreground">
               {user.initials}
             </AvatarFallback>
@@ -257,7 +258,7 @@ function UserMenu({
               <span className="mt-0.5 block truncate text-xs">{user.email}</span>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem render={<Link href="/app/settings" />}>
+            <DropdownMenuItem render={<Link href="/app/settings?section=profile" />}>
               <UserRound aria-hidden="true" />
               Profile
             </DropdownMenuItem>

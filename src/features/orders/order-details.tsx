@@ -5,19 +5,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { orderStatusClass, orderStatusLabels } from "./order-status"
 import type { OrderDetailsData, OrderStatus } from "./types"
+import { formatBusinessDateTime, formatBusinessMoney } from "@/lib/formatting"
 
 const workflow: OrderStatus[] = ["pending", "confirmed", "processing", "ready", "completed"]
 
-function formatMoney(currencyCode: string, amount: number) {
-  return new Intl.NumberFormat("en", { currency: currencyCode, currencyDisplay: "narrowSymbol", style: "currency" }).format(amount)
-}
-
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat("en-NG", { dateStyle: "long", timeStyle: "short", timeZone: "Africa/Lagos" }).format(new Date(value))
-}
-
 export function OrderDetails({ order }: { order: OrderDetailsData }) {
-  const money = (amount: number) => formatMoney(order.currencyCode, amount)
+  const money = (amount: number) => formatBusinessMoney(amount, order.currencyCode, order.formatting.locale)
+  const dateTime = (value: string) => formatBusinessDateTime(value, order.formatting)
   const currentIndex = workflow.indexOf(order.status)
   return (
     <div className="space-y-6">
@@ -39,14 +33,14 @@ export function OrderDetails({ order }: { order: OrderDetailsData }) {
 
           <Card>
             <CardHeader><CardTitle as="h2" className="flex items-center gap-2"><History aria-hidden="true" className="size-4" />Status history</CardTitle></CardHeader>
-            <CardContent><ol className="space-y-4">{order.history.map((entry) => <li className="flex gap-3" key={entry.id}><span className="mt-1.5 size-2 shrink-0 rounded-full bg-primary" /><div><p className="text-sm"><span className="font-medium">{entry.previousStatus ? orderStatusLabels[entry.previousStatus as OrderStatus] : "Created"}</span>{entry.previousStatus ? " → " : " as "}<span className="font-medium">{orderStatusLabels[entry.newStatus as OrderStatus]}</span></p><p className="mt-1 text-xs text-muted-foreground">{formatDate(entry.createdAt)} · {entry.changedBy}</p>{entry.note ? <p className="mt-1 text-sm text-muted-foreground">{entry.note}</p> : null}</div></li>)}</ol></CardContent>
+            <CardContent><ol className="space-y-4">{order.history.map((entry) => <li className="flex gap-3" key={entry.id}><span className="mt-1.5 size-2 shrink-0 rounded-full bg-primary" /><div><p className="text-sm"><span className="font-medium">{entry.previousStatus ? orderStatusLabels[entry.previousStatus as OrderStatus] : "Created"}</span>{entry.previousStatus ? " → " : " as "}<span className="font-medium">{orderStatusLabels[entry.newStatus as OrderStatus]}</span></p><p className="mt-1 text-xs text-muted-foreground">{dateTime(entry.createdAt)} · {entry.changedBy}</p>{entry.note ? <p className="mt-1 text-sm text-muted-foreground">{entry.note}</p> : null}</div></li>)}</ol></CardContent>
           </Card>
         </div>
 
         <div className="space-y-4">
           <Card><CardHeader><CardTitle>Buyer</CardTitle></CardHeader><CardContent className="flex items-start gap-3 text-sm"><UserRound aria-hidden="true" className="mt-0.5 size-4 text-muted-foreground" /><div><p className="font-medium">{order.buyerName}</p>{order.buyerPhone ? <p className="mt-1 text-muted-foreground">{order.buyerPhone}</p> : null}{order.buyerEmail ? <p className="mt-1 text-muted-foreground">{order.buyerEmail}</p> : null}</div></CardContent></Card>
           <Card><CardHeader><CardTitle>Delivery address</CardTitle></CardHeader><CardContent>{order.deliveryZoneName ? <p className="mb-2 text-sm font-medium">{order.deliveryZoneName}</p> : null}<p className="whitespace-pre-wrap text-sm text-muted-foreground">{order.deliveryAddress ?? "No delivery address was recorded for this order."}</p></CardContent></Card>
-          <Card><CardHeader><CardTitle>Order</CardTitle></CardHeader><CardContent className="space-y-3 text-sm"><div className="flex items-center gap-3"><CalendarDays aria-hidden="true" className="size-4 text-muted-foreground" />{formatDate(order.placedAt)}</div><div className="flex items-center gap-3"><ShoppingBag aria-hidden="true" className="size-4 text-muted-foreground" /><span className="capitalize">{order.channel}</span></div><div className="flex items-center gap-3"><CircleDollarSign aria-hidden="true" className="size-4 text-muted-foreground" /><span className="capitalize">Payment: {order.paymentStatus}</span></div><div className="flex items-center justify-between border-t pt-3"><span className="text-muted-foreground">Status</span><Badge className={orderStatusClass(order.status)} variant="secondary">{orderStatusLabels[order.status]}</Badge></div></CardContent></Card>
+          <Card><CardHeader><CardTitle>Order</CardTitle></CardHeader><CardContent className="space-y-3 text-sm"><div className="flex items-center gap-3"><CalendarDays aria-hidden="true" className="size-4 text-muted-foreground" />{dateTime(order.placedAt)}</div><div className="flex items-center gap-3"><ShoppingBag aria-hidden="true" className="size-4 text-muted-foreground" /><span className="capitalize">{order.channel}</span></div><div className="flex items-center gap-3"><CircleDollarSign aria-hidden="true" className="size-4 text-muted-foreground" /><span className="capitalize">Payment: {order.paymentStatus}</span></div><div className="flex items-center justify-between border-t pt-3"><span className="text-muted-foreground">Status</span><Badge className={orderStatusClass(order.status)} variant="secondary">{orderStatusLabels[order.status]}</Badge></div></CardContent></Card>
           <Card><CardHeader><CardTitle>Summary</CardTitle></CardHeader><CardContent className="space-y-3 text-sm"><div className="flex justify-between text-muted-foreground"><span>Subtotal</span><span>{money(order.subtotalAmount)}</span></div><div className="flex justify-between text-muted-foreground"><span>Discount</span><span>−{money(order.discountAmount)}</span></div><div className="flex justify-between text-muted-foreground"><span>Shipping</span><span>{money(order.shippingAmount)}</span></div><div className="flex justify-between text-muted-foreground"><span>Tax</span><span>{money(order.taxAmount)}</span></div><div className="flex justify-between border-t pt-3 text-base font-semibold"><span>Total</span><span>{money(order.totalAmount)}</span></div></CardContent></Card>
           {order.notes ? <Card><CardHeader><CardTitle>Notes</CardTitle></CardHeader><CardContent><p className="whitespace-pre-wrap text-sm text-muted-foreground">{order.notes}</p></CardContent></Card> : null}
         </div>

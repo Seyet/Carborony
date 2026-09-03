@@ -6,12 +6,14 @@ import { getCurrentBusiness } from "@/features/businesses/server/get-current-bus
 import { ApiError, type JsonHandlerResult } from "@/lib/api/server"
 import { createClient } from "@/lib/supabase/server"
 import type { Json } from "@/types/database"
+import { storefrontCopyJson } from "../copy"
 import type { StorefrontSettingsInput } from "../schemas"
 
 type SaveStorefrontResult = { productCount: number; slug: string; status: string }
 
 const safeMessages = new Set([
   "Check the storefront configuration and try again.",
+  "Check the storefront wording and try again.",
   "Check the delivery zones and prices.",
   "Add at least one delivery zone and price.",
   "Delivery zone names must be unique.",
@@ -30,6 +32,7 @@ export async function saveStorefront(input: StorefrontSettingsInput): Promise<Js
     bank_transfer_instructions: input.bankTransferInstructions,
     contact_email: input.contactEmail,
     contact_phone: input.contactPhone,
+    storefront_copy: storefrontCopyJson(input.copy),
     delivery_zones: input.deliveryZones.map((zone, position) => ({
       coverage_details: zone.coverageDetails,
       delivery_fee: zone.deliveryFee,
@@ -48,7 +51,7 @@ export async function saveStorefront(input: StorefrontSettingsInput): Promise<Js
     seo_description: input.seoDescription,
     seo_title: input.seoTitle,
   }
-  const { data, error } = await supabase.rpc("save_storefront", {
+  const { data, error } = await supabase.rpc("save_storefront_with_copy", {
     featured_product_ids: input.featuredProductIds,
     published_product_ids: input.publishedProductIds,
     requested_status: input.requestedStatus,

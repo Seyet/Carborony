@@ -54,6 +54,12 @@ export type OrderDetailsData = {
   deliveryZoneName: string | null
   discountAmount: number
   fulfillmentStatus: string
+  formatting: {
+    dateFormat: "day_month_year" | "month_day_year" | "year_month_day"
+    locale: string
+    timeFormat: "12h" | "24h"
+    timeZone: string
+  }
   history: OrderStatusHistoryItem[]
   id: string
   items: OrderLineItem[]

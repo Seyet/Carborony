@@ -29,5 +29,5 @@ export default async function StoreProductPage({ params, searchParams }: Product
   const product = store?.products[0]
   if (!store || !product) notFound()
 
-  return <StorefrontShell preview={preview} store={store}><main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8"><Link className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground" href={`/store/${store.slug}${preview ? "?preview=1" : ""}`}><ChevronLeft aria-hidden="true" className="size-4" />Back to shop</Link><StorefrontProductView product={product} store={store} /></main></StorefrontShell>
+  return <StorefrontShell preview={preview} store={store}><main className="bg-muted/15"><div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8"><Link className="inline-flex items-center gap-1 rounded-full border bg-background px-3 py-2 text-sm font-medium text-muted-foreground shadow-xs transition hover:-translate-x-0.5 hover:text-foreground" href={`/store/${store.slug}${preview ? "?preview=1" : ""}`}><ChevronLeft aria-hidden="true" className="size-4" />Back to shop</Link><StorefrontProductView product={product} store={store} /></div></main></StorefrontShell>
 }

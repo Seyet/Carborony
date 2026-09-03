@@ -9,12 +9,28 @@ export type StorefrontDeliveryZone = {
   position: number
 }
 
+export type StorefrontCopy = {
+  catalogueDescription: string
+  catalogueEyebrow: string
+  catalogueTitle: string
+  footerTagline: string
+  heroCtaLabel: string
+  heroEyebrow: string
+  trustOneDescription: string
+  trustOneTitle: string
+  trustThreeDescription: string
+  trustThreeTitle: string
+  trustTwoDescription: string
+  trustTwoTitle: string
+}
+
 export type StorefrontSettings = {
   announcement: string | null
   bankTransferEnabled: boolean
   bankTransferInstructions: string | null
   contactEmail: string | null
   contactPhone: string | null
+  copy: StorefrontCopy
   deliveryZones: StorefrontDeliveryZone[]
   deliveryEnabled: boolean
   heroBannerUrl: string | null

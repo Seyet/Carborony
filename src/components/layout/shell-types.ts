@@ -6,6 +6,7 @@ export type ShellBusiness = {
 }
 
 export type ShellUser = {
+  avatarUrl: string | null
   name: string
   email: string
   initials: string

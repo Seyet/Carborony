@@ -41,7 +41,7 @@ export async function getTransactionDocument(
   const business = await getCurrentBusiness()
   const supabase = await createClient()
   const businessResult = await supabase.from("businesses")
-    .select("name, address, phone, email, website_url, currency_code")
+    .select("name, address, phone, email, website_url, currency_code, date_format, locale, time_format, timezone")
     .eq("id", business.id)
     .single()
 
@@ -94,6 +94,12 @@ export async function getTransactionDocument(
       ),
       discountAmount: Number(saleResult.data.discount_amount),
       deliveryAddress: null,
+      formatting: {
+        dateFormat: businessResult.data.date_format as TransactionDocumentData["formatting"]["dateFormat"],
+        locale: businessResult.data.locale,
+        timeFormat: businessResult.data.time_format as TransactionDocumentData["formatting"]["timeFormat"],
+        timeZone: businessResult.data.timezone,
+      },
       id: saleResult.data.id,
       issuedAt: saleResult.data.sold_at,
       items: (itemsResult.data ?? []).map((item) => ({
@@ -171,6 +177,12 @@ export async function getTransactionDocument(
     ),
     discountAmount: Number(orderResult.data.discount_amount),
     deliveryAddress: orderResult.data.delivery_address,
+    formatting: {
+      dateFormat: businessResult.data.date_format as TransactionDocumentData["formatting"]["dateFormat"],
+      locale: businessResult.data.locale,
+      timeFormat: businessResult.data.time_format as TransactionDocumentData["formatting"]["timeFormat"],
+      timeZone: businessResult.data.timezone,
+    },
     id: orderResult.data.id,
     issuedAt: orderResult.data.placed_at,
     items: (itemsResult.data ?? []).map((item) => ({

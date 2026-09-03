@@ -47,6 +47,40 @@ type ActivityLogRow = {
   previous_value: Json | null
 }
 
+type BusinessBillingProfileRow = {
+  billing_email: string | null
+  billing_interval: string | null
+  business_id: string
+  cancel_at_period_end: boolean
+  created_at: string
+  currency_code: string
+  current_period_ends_at: string | null
+  current_period_starts_at: string | null
+  payment_method_brand: string | null
+  payment_method_expiry_month: number | null
+  payment_method_expiry_year: number | null
+  payment_method_last_four: string | null
+  plan_amount: number
+  plan_code: string
+  subscription_status: string
+  updated_at: string
+}
+
+type BillingInvoiceRow = {
+  amount_due: number
+  amount_paid: number
+  business_id: string
+  created_at: string
+  currency_code: string
+  due_at: string | null
+  hosted_invoice_url: string | null
+  id: string
+  invoice_number: string
+  issued_at: string
+  paid_at: string | null
+  status: string
+}
+
 type CustomerRow = {
   address: string | null
   birthday: string | null
@@ -311,6 +345,7 @@ type StorefrontRow = {
   seo_description: string | null
   seo_title: string | null
   status: string
+  storefront_copy: Json
   updated_at: string
 }
 
@@ -351,6 +386,16 @@ export type Database = {
         ActivityLogRow,
         "action" | "actor_name" | "business_id" | "entity_type",
         "id" | "created_at"
+      >
+      billing_invoices: DomainTable<
+        BillingInvoiceRow,
+        "amount_due" | "business_id" | "currency_code" | "invoice_number" | "issued_at" | "status",
+        "id" | "created_at"
+      >
+      business_billing_profiles: DomainTable<
+        BusinessBillingProfileRow,
+        "business_id",
+        "created_at" | "updated_at"
       >
       categories: DomainTable<
         CategoryRow,
@@ -431,20 +476,24 @@ export type Database = {
           currency_code: string
           created_at: string
           created_by: string
+          date_format: string
           description: string | null
           email: string | null
           facebook_page: string | null
           id: string
           instagram_account: string | null
+          locale: string
           logo_path: string | null
           name: string
           onboarding_completed_at: string | null
           opening_hours: Json
           phone: string | null
           slug: string
+          time_format: string
           timezone: string
           updated_at: string
           website_url: string | null
+          week_starts_on: number
           whatsapp_phone: string | null
         }
         Insert: {
@@ -454,20 +503,24 @@ export type Database = {
           currency_code?: string
           created_at?: string
           created_by: string
+          date_format?: string
           description?: string | null
           email?: string | null
           facebook_page?: string | null
           id?: string
           instagram_account?: string | null
+          locale?: string
           logo_path?: string | null
           name: string
           onboarding_completed_at?: string | null
           opening_hours?: Json
           phone?: string | null
           slug: string
+          time_format?: string
           timezone?: string
           updated_at?: string
           website_url?: string | null
+          week_starts_on?: number
           whatsapp_phone?: string | null
         }
         Update: {
@@ -477,20 +530,24 @@ export type Database = {
           currency_code?: string
           created_at?: string
           created_by?: string
+          date_format?: string
           description?: string | null
           email?: string | null
           facebook_page?: string | null
           id?: string
           instagram_account?: string | null
+          locale?: string
           logo_path?: string | null
           name?: string
           onboarding_completed_at?: string | null
           opening_hours?: Json
           phone?: string | null
           slug?: string
+          time_format?: string
           timezone?: string
           updated_at?: string
           website_url?: string | null
+          week_starts_on?: number
           whatsapp_phone?: string | null
         }
         Relationships: [
@@ -846,6 +903,7 @@ export type Database = {
           seo_description: string | null
           seo_title: string | null
           storefront_status: string
+          storefront_copy: Json
         }[]
       }
       get_public_storefront_products: {
@@ -871,6 +929,20 @@ export type Database = {
         }[]
       }
       save_storefront: {
+        Args: {
+          featured_product_ids: string[]
+          published_product_ids: string[]
+          requested_status: string
+          storefront_configuration: Json
+          target_business_id: string
+        }
+        Returns: {
+          published_product_count: number
+          store_slug: string
+          storefront_status: string
+        }[]
+      }
+      save_storefront_with_copy: {
         Args: {
           featured_product_ids: string[]
           published_product_ids: string[]
@@ -1785,6 +1857,13 @@ export type Database = {
       is_business_member: {
         Args: { target_business_id: string }
         Returns: boolean
+      }
+      update_billing_contact: {
+        Args: {
+          target_billing_email: string
+          target_business_id: string
+        }
+        Returns: undefined
       }
     }
     Enums: Record<never, never>
