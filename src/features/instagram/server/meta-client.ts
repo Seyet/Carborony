@@ -194,7 +194,9 @@ export async function refreshLongLivedToken(accessToken: string) {
 
 export async function getInstagramProfile(accessToken: string) {
   const payload = await metaFetch(graphUrl("me", {
-    fields: "id,user_id,username,name,account_type,profile_picture_url",
+    // Keep this to fields supported consistently by Instagram Login. The OAuth
+    // token response can contain `user_id`, but that is not a portable /me field.
+    fields: "id,username,account_type",
   }), { headers: { Authorization: `Bearer ${accessToken}` } })
   return profileResponseSchema.parse(payload)
 }

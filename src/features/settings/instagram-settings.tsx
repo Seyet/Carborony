@@ -15,12 +15,22 @@ export function InstagramSettings({
   result?: string
 }) {
   const ready = data.setupReady && data.configurationReady
+  const failureMessages: Record<string, string> = {
+    code_exchange_failed: "Instagram returned an authorization code, but Meta rejected the code exchange. Confirm the Instagram app ID, app secret, and exact redirect URL in Vercel and Meta.",
+    connection_failed: "Instagram could not be connected. Check the Meta app configuration and try again.",
+    invalid_state: "The Instagram connection request expired or was already used. Start a new connection from this page.",
+    missing_code: "Instagram did not return an authorization code. Start the connection again.",
+    profile_lookup_failed: "The access token was created, but Instagram account details could not be read. Confirm the account is a professional account and has access to this unpublished app.",
+    save_failed: "Instagram authorized the connection, but Carborony could not save it. Confirm the latest database migration has been applied.",
+    server_configuration_failed: "Instagram authorized the connection, but the deployment encryption or server credentials are invalid.",
+    token_exchange_failed: "Meta rejected the long-lived token exchange. Confirm the Instagram app secret belongs to the Instagram app ID configured in Vercel.",
+  }
   const connectionNotice = result === "connected"
     ? { message: "Instagram connected successfully. Sync now to import recent posts.", success: true }
     : result === "cancelled"
       ? { message: "Instagram connection was cancelled. No account changes were made.", success: false }
       : result
-        ? { message: "Instagram could not be connected. Check the Meta app configuration and try again.", success: false }
+        ? { message: failureMessages[result] ?? failureMessages.connection_failed, success: false }
         : null
 
   return (

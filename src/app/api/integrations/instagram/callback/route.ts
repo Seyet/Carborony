@@ -6,6 +6,7 @@ import {
   exchangeAuthorizationCode,
   exchangeLongLivedToken,
   getInstagramProfile,
+  MetaInstagramError,
 } from "@/features/instagram/server/meta-client"
 import { encryptInstagramToken } from "@/features/instagram/server/token-vault"
 import { getCurrentUser } from "@/lib/auth/session"
@@ -26,6 +27,23 @@ function resultRedirect(request: NextRequest, returnPath: string, result: string
   const response = NextResponse.redirect(url, 303)
   response.headers.set("Cache-Control", "private, no-store")
   return response
+}
+
+function failureResultForStage(stage: string) {
+  switch (stage) {
+    case "short_token_exchange":
+      return "code_exchange_failed"
+    case "long_token_exchange":
+      return "token_exchange_failed"
+    case "profile_lookup":
+      return "profile_lookup_failed"
+    case "token_encryption":
+      return "server_configuration_failed"
+    case "connection_save":
+      return "save_failed"
+    default:
+      return "connection_failed"
+  }
 }
 
 export async function GET(request: NextRequest) {
@@ -59,17 +77,23 @@ export async function GET(request: NextRequest) {
     return resultRedirect(request, returnPath, denied ? "cancelled" : "missing_code")
   }
 
+  let stage = "short_token_exchange"
+
   try {
     const shortLived = await exchangeAuthorizationCode(code, request.nextUrl.origin)
+    stage = "long_token_exchange"
     const longLived = await exchangeLongLivedToken(shortLived.access_token)
+    stage = "profile_lookup"
     const profile = await getInstagramProfile(longLived.access_token)
     const expiresAt = longLived.expires_in
       ? new Date(Date.now() + longLived.expires_in * 1_000).toISOString()
       : null
+    stage = "token_encryption"
     const encrypted = encryptInstagramToken(longLived.access_token)
     const accountType = profile.account_type?.toLocaleLowerCase("en") === "business"
       ? "business"
       : "creator"
+    stage = "connection_save"
     const admin = createAdminClient()
     const { error: connectionError } = await admin.rpc(
       "complete_instagram_connection",
@@ -100,8 +124,12 @@ export async function GET(request: NextRequest) {
     return resultRedirect(request, returnPath, "connected")
   } catch (error) {
     console.error("Instagram OAuth callback failed", {
+      stage,
       name: error instanceof Error ? error.name : "UnknownError",
+      status: error instanceof MetaInstagramError ? error.status : undefined,
+      metaCode: error instanceof MetaInstagramError ? error.metaCode : undefined,
+      metaSubcode: error instanceof MetaInstagramError ? error.metaSubcode : undefined,
     })
-    return resultRedirect(request, returnPath, "connection_failed")
+    return resultRedirect(request, returnPath, failureResultForStage(stage))
   }
 }
