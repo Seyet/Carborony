@@ -53,6 +53,7 @@ export type SettingsPageData = {
   canManageBusiness: boolean
   canViewBusiness: boolean
   isOwner: boolean
+  instagram: import("@/features/instagram/types").InstagramSettingsData
   profile: {
     avatarUrl: string | null
     email: string

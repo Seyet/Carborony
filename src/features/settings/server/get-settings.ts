@@ -4,6 +4,8 @@ import { headers } from "next/headers"
 
 import { getCurrentBusiness } from "@/features/businesses/server/get-current-business"
 import { weekDays } from "@/features/businesses/onboarding/options"
+import { instagramConfigurationAvailable } from "@/features/instagram/server/config"
+import { getInstagramConnectionForSettings } from "@/features/instagram/server/get-instagram"
 import { publicStorageUrl } from "@/features/storefront/server/media-url"
 import { requireUser } from "@/lib/auth/session"
 import { createClient } from "@/lib/supabase/server"
@@ -60,7 +62,7 @@ export async function getSettingsPageData(): Promise<SettingsPageData> {
   const canManageBusiness = business.permissions.includes("settings.manage")
   const isOwner = business.roleCode === "owner"
 
-  const [profileResult, businessResult, billingResult, invoicesResult] = await Promise.all([
+  const [profileResult, businessResult, billingResult, invoicesResult, instagram] = await Promise.all([
     supabase.from("profiles")
       .select("full_name, phone, avatar_url")
       .eq("id", user.id)
@@ -85,6 +87,7 @@ export async function getSettingsPageData(): Promise<SettingsPageData> {
           .order("id", { ascending: false })
           .limit(25)
       : Promise.resolve({ data: null, error: null }),
+    getInstagramConnectionForSettings(),
   ])
 
   if (profileResult.error) {
@@ -155,6 +158,11 @@ export async function getSettingsPageData(): Promise<SettingsPageData> {
     canManageBusiness,
     canViewBusiness,
     isOwner,
+    instagram: {
+      configurationReady: instagramConfigurationAvailable(),
+      connection: instagram.connection,
+      setupReady: instagram.setupReady,
+    },
     profile: {
       avatarUrl: profile.avatar_url,
       email: user.email ?? "",
