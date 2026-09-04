@@ -265,6 +265,32 @@ export async function syncInstagram(): Promise<JsonHandlerResult<{
     target_connection_id: connection.id,
   }).single()
   if (runResult.error) {
+    if (runResult.error.code === "55006") {
+      logInstagramWarning("sync.rejected", {
+        businessId: business.id,
+        connectionId: connection.id,
+        durationMs: Date.now() - startedAt,
+        reason: "sync_already_running",
+        traceId,
+        userId: user.id,
+      })
+      throw new ApiError(409, "INSTAGRAM_SYNC_RUNNING", "An Instagram sync is already running.")
+    }
+    if (runResult.error.code === "P0001") {
+      logInstagramWarning("sync.rejected", {
+        businessId: business.id,
+        connectionId: connection.id,
+        durationMs: Date.now() - startedAt,
+        reason: "sync_cooldown",
+        traceId,
+        userId: user.id,
+      })
+      throw new ApiError(
+        429,
+        "INSTAGRAM_SYNC_COOLDOWN",
+        "Instagram was synced recently. Try again in a few minutes.",
+      )
+    }
     logInstagramError("sync.run_start_failed", runResult.error, {
       businessId: business.id,
       connectionId: connection.id,
@@ -272,16 +298,6 @@ export async function syncInstagram(): Promise<JsonHandlerResult<{
       traceId,
       userId: user.id,
     })
-    if (runResult.error.code === "55006") {
-      throw new ApiError(409, "INSTAGRAM_SYNC_RUNNING", "An Instagram sync is already running.")
-    }
-    if (runResult.error.code === "P0001") {
-      throw new ApiError(
-        429,
-        "INSTAGRAM_SYNC_COOLDOWN",
-        "Instagram was synced recently. Try again in a few minutes.",
-      )
-    }
     if (setupError(runResult.error.code)) {
       throw new ApiError(503, "INSTAGRAM_SETUP_REQUIRED", "Apply the Instagram database migration first.")
     }

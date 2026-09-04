@@ -44,3 +44,5 @@ next-env.d.ts
 # supabase
 supabase/migrations/*
 !supabase/migrations/20260904010000_instagram_catalogue_foundation.sql
+!supabase/migrations/20260904020000_fix_instagram_connection_credential_upsert.sql
+!supabase/migrations/20260904030000_reset_instagram_sync_schedule_on_reconnect.sql
