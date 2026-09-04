@@ -14,7 +14,6 @@ const tokenResponseSchema = z.object({
   access_token: z.string().min(1).max(4_096),
   expires_in: z.coerce.number().int().positive().optional(),
   token_type: z.string().optional(),
-  user_id: metaIdentifier.optional(),
 })
 
 const profileResponseSchema = z.object({
