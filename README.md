@@ -67,7 +67,7 @@ business provisioning, business-owner membership automation, timestamp
 triggers, membership helper functions, indexes, and seed roles. The dashboard
 domain migration adds products, categories, inventory, customers, orders,
 sales, expenses, tenant-safe policies, and dashboard aggregate functions.
-Payment-provider records, marketing records, and Storage buckets remain
+Payment-provider integrations and outbound marketing automation remain
 deliberately deferred.
 
 ## Signup flow
@@ -119,6 +119,27 @@ OTP verification, and OTP resend handlers. They validate body size, content
 type, origin, and payloads before calling Supabase, and never return sessions or
 tokens. `/auth/callback` and `/auth/confirm` remain browser redirect handlers
 because Supabase email and PKCE links navigate to them directly.
+
+## Instagram catalogue import
+
+The Instagram integration uses Meta's **Instagram API with Instagram Login**
+and requests `instagram_business_basic`. Configure the server-only Meta values
+shown in `.env.example`, add this exact production OAuth redirect URI in the
+Meta dashboard, and apply the latest database migration:
+
+```text
+https://carborony.vercel.app/api/integrations/instagram/callback
+```
+
+```bash
+npx supabase db push
+```
+
+Owners connect the account under **Settings → Integrations** and manually sync
+recent posts. Caption rules create editable suggestions; imports are never
+turned into catalogue products until an authorized user confirms the review and
+chooses **Add as catalogue draft** or **Approve & publish**. Access tokens are
+encrypted before storage and are never exposed to browser code.
 
 ## Architecture
 

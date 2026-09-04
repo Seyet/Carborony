@@ -284,6 +284,101 @@ type ProductMediaRow = {
   variant_id: string | null
 }
 
+type InstagramConnectionRow = {
+  account_type: string
+  business_id: string
+  connection_generation: number
+  connected_at: string
+  connected_by: string
+  created_at: string
+  disconnected_at: string | null
+  granted_scopes: string[]
+  id: string
+  instagram_user_id: string
+  last_error_code: string | null
+  last_error_message: string | null
+  last_synced_at: string | null
+  next_sync_at: string | null
+  status: string
+  sync_enabled: boolean
+  token_expires_at: string | null
+  updated_at: string
+  username: string
+}
+
+type InstagramMediaRow = {
+  business_id: string
+  caption: string | null
+  caption_hash: string
+  connection_id: string
+  created_at: string
+  first_detected_at: string
+  id: string
+  instagram_media_id: string
+  last_checked_at: string
+  last_error: string | null
+  media_product_type: string | null
+  media_type: string
+  permalink: string
+  processing_status: string
+  raw_metadata: Json
+  source_media_url: string | null
+  source_published_at: string
+  source_thumbnail_url: string | null
+  staged_media_path: string | null
+  updated_at: string
+}
+
+type InstagramProductDraftRow = {
+  approved_product_id: string | null
+  approved_snapshot: Json | null
+  business_id: string
+  created_at: string
+  created_by: string
+  duplicate_product_id: string | null
+  duplicate_score: number | null
+  edited_data: Json
+  extracted_data: Json
+  extraction_version: string
+  field_confidence: Json
+  id: string
+  media_id: string
+  resolved_at: string | null
+  reviewed_by: string | null
+  status: string
+  updated_at: string
+}
+
+type ProductSocialSourceRow = {
+  attached_at: string
+  attached_by: string
+  business_id: string
+  created_at: string
+  id: string
+  instagram_media_id: string
+  product_id: string
+  source_permalink: string
+  source_type: string
+}
+
+type InstagramSyncRunRow = {
+  business_id: string
+  completed_at: string | null
+  connection_id: string
+  connection_generation: number
+  cursor_after: string | null
+  cursor_before: string | null
+  drafts_created: number
+  error_code: string | null
+  error_message: string | null
+  id: string
+  posts_created: number
+  posts_received: number
+  posts_updated: number
+  started_at: string
+  status: string
+}
+
 type SaleItemRow = {
   business_id: string
   created_at: string
@@ -594,6 +689,36 @@ export type Database = {
         | "product_id"
         | "quantity_delta"
       >
+      instagram_connections: DomainTable<
+        InstagramConnectionRow,
+        | "account_type"
+        | "business_id"
+        | "connected_by"
+        | "instagram_user_id"
+        | "username",
+        "id" | "created_at" | "updated_at"
+      >
+      instagram_media: DomainTable<
+        InstagramMediaRow,
+        | "business_id"
+        | "caption_hash"
+        | "connection_id"
+        | "instagram_media_id"
+        | "media_type"
+        | "permalink"
+        | "source_published_at",
+        "id" | "created_at" | "updated_at"
+      >
+      instagram_product_drafts: DomainTable<
+        InstagramProductDraftRow,
+        "business_id" | "created_by" | "media_id",
+        "id" | "created_at" | "updated_at"
+      >
+      instagram_sync_runs: DomainTable<
+        InstagramSyncRunRow,
+        "business_id" | "connection_generation" | "connection_id",
+        "id" | "started_at"
+      >
       order_items: DomainTable<
         OrderItemRow,
         | "business_id"
@@ -652,6 +777,15 @@ export type Database = {
         | "mime_type"
         | "product_id"
         | "storage_path"
+      >
+      product_social_sources: DomainTable<
+        ProductSocialSourceRow,
+        | "attached_by"
+        | "business_id"
+        | "instagram_media_id"
+        | "product_id"
+        | "source_permalink",
+        "id" | "created_at"
       >
       product_variants: DomainTable<
         ProductVariantRow,
@@ -855,6 +989,60 @@ export type Database = {
     }
     Views: Record<never, never>
     Functions: {
+      approve_instagram_product_draft: {
+        Args: {
+          confirm_create_new?: boolean
+          requested_product_status?: string
+          target_business_id: string
+          target_draft_id: string
+        }
+        Returns: {
+          draft_status: string
+          product_id: string
+          was_created: boolean
+        }[]
+      }
+      attach_instagram_draft_to_product: {
+        Args: {
+          target_business_id: string
+          target_draft_id: string
+          target_product_id: string
+        }
+        Returns: { draft_status: string; product_id: string }[]
+      }
+      complete_instagram_connection: {
+        Args: {
+          encrypted_access_token: string
+          instagram_account: Json
+          target_business_id: string
+          target_connected_by: string
+          target_encryption_version: number
+          target_token_expires_at: string | null
+          target_token_fingerprint: string
+        }
+        Returns: {
+          connection_id: string
+          connection_status: string
+          username: string
+        }[]
+      }
+      consume_instagram_oauth_state: {
+        Args: { target_state_hash: string }
+        Returns: {
+          business_id: string
+          initiated_by: string
+          return_path: string
+        }[]
+      }
+      create_instagram_oauth_state: {
+        Args: {
+          target_business_id: string
+          target_expires_at?: string
+          target_return_path?: string
+          target_state_hash: string
+        }
+        Returns: string
+      }
       create_storefront_order: {
         Args: {
           checkout_buyer_email: string
@@ -906,6 +1094,18 @@ export type Database = {
           storefront_copy: Json
         }[]
       }
+      get_instagram_connection_credential: {
+        Args: {
+          target_connection_generation: number
+          target_connection_id: string
+        }
+        Returns: {
+          encrypted_access_token: string
+          encryption_version: number
+          token_expires_at: string | null
+          token_fingerprint: string
+        }[]
+      }
       get_public_storefront_products: {
         Args: {
           include_draft?: boolean
@@ -926,6 +1126,51 @@ export type Database = {
           specifications: Json
           track_inventory: boolean
           variants: Json
+        }[]
+      }
+      ingest_instagram_media: {
+        Args: {
+          confidence_payload?: Json
+          extraction_payload?: Json
+          media_payload: Json
+          target_business_id: string
+          target_connection_id: string
+          target_connection_generation: number
+        }
+        Returns: {
+          draft_id: string
+          media_id: string
+          was_created: boolean
+        }[]
+      }
+      replace_instagram_connection_credential: {
+        Args: {
+          target_encrypted_access_token: string
+          target_connection_id: string
+          target_connection_generation: number
+          target_encryption_version: number
+          target_token_expires_at: string | null
+          target_token_fingerprint: string
+        }
+        Returns: undefined
+      }
+      resolve_instagram_product_draft: {
+        Args: {
+          target_business_id: string
+          target_draft_id: string
+          target_resolution: string
+        }
+        Returns: string
+      }
+      save_instagram_product_draft: {
+        Args: {
+          edited_product_data: Json
+          target_business_id: string
+          target_draft_id: string
+        }
+        Returns: {
+          draft_status: string
+          effective_product_data: Json
         }[]
       }
       save_storefront: {
@@ -955,6 +1200,29 @@ export type Database = {
           store_slug: string
           storefront_status: string
         }[]
+      }
+      set_instagram_connection_preferences: {
+        Args: { target_business_id: string; target_sync_enabled: boolean }
+        Returns: undefined
+      }
+      start_instagram_sync_run: {
+        Args: {
+          target_actor_id: string
+          target_business_id: string
+          target_connection_id: string
+        }
+        Returns: {
+          connection_generation: number
+          run_id: string
+        }[]
+      }
+      disconnect_instagram_connection: {
+        Args: {
+          target_actor_id: string
+          target_business_id: string
+          target_connection_generation: number
+        }
+        Returns: boolean
       }
       search_business_activity: {
         Args: {

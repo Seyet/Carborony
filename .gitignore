@@ -42,4 +42,5 @@ yarn-error.log*
 next-env.d.ts
 
 # supabase
-supabase/migrations
+supabase/migrations/*
+!supabase/migrations/20260904010000_instagram_catalogue_foundation.sql
