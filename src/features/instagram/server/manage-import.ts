@@ -11,6 +11,13 @@ import { createAdminClient } from "@/lib/supabase/admin"
 import { createClient } from "@/lib/supabase/server"
 import type { Json } from "@/types/database"
 
+import {
+  logInstagramError,
+  logInstagramInfo,
+  logInstagramWarning,
+  newInstagramTraceId,
+} from "./logger"
+
 const maximumImageBytes = 5 * 1024 * 1024
 const supportedImages: Record<string, string> = {
   "image/jpeg": "jpg",
@@ -217,11 +224,47 @@ export async function manageInstagramImport(
   draftId: string,
   input: InstagramImportMutationInput,
 ): Promise<JsonHandlerResult<{ productId?: string }>> {
+  const traceId = newInstagramTraceId()
+  const startedAt = Date.now()
   const user = await getCurrentUser()
-  if (!user) throw new ApiError(401, "AUTH_REQUIRED", "Sign in to review Instagram imports.")
+  if (!user) {
+    logInstagramWarning("import.rejected", { draftId, reason: "auth_required", traceId })
+    throw new ApiError(401, "AUTH_REQUIRED", "Sign in to review Instagram imports.")
+  }
   const business = await getCurrentBusiness()
   if (!business.permissions.includes("products.manage")) {
+    logInstagramWarning("import.rejected", {
+      businessId: business.id,
+      draftId,
+      reason: "products_manage_required",
+      traceId,
+      userId: user.id,
+    })
     throw new ApiError(403, "INSTAGRAM_IMPORT_FORBIDDEN", "You do not have permission to manage products.")
+  }
+
+  logInstagramInfo("import.requested", {
+    action: input.action,
+    businessId: business.id,
+    draftId,
+    traceId,
+    userId: user.id,
+  })
+
+  const databaseFailure = (
+    stage: string,
+    error: { code?: string; message: string },
+  ) => {
+    logInstagramError("import.database_failed", error, {
+      action: input.action,
+      businessId: business.id,
+      draftId,
+      durationMs: Date.now() - startedAt,
+      stage,
+      traceId,
+      userId: user.id,
+    })
+    return safeDatabaseMessage(error)
   }
   const supabase = await createClient()
   const businessResult = await supabase.from("businesses")
@@ -229,6 +272,14 @@ export async function manageInstagramImport(
     .eq("id", business.id)
     .single()
   if (businessResult.error) {
+    logInstagramError("import.business_load_failed", businessResult.error, {
+      action: input.action,
+      businessId: business.id,
+      draftId,
+      durationMs: Date.now() - startedAt,
+      traceId,
+      userId: user.id,
+    })
     throw new ApiError(503, "INSTAGRAM_IMPORT_FAILED", "We couldn't load the business currency.")
   }
 
@@ -238,7 +289,15 @@ export async function manageInstagramImport(
       target_business_id: business.id,
       target_draft_id: draftId,
     })
-    if (error) throw safeDatabaseMessage(error)
+    if (error) throw databaseFailure("draft_save", error)
+    logInstagramInfo("import.completed", {
+      action: input.action,
+      businessId: business.id,
+      draftId,
+      durationMs: Date.now() - startedAt,
+      traceId,
+      userId: user.id,
+    })
     return { data: {}, message: "Instagram draft saved." }
   }
 
@@ -248,7 +307,16 @@ export async function manageInstagramImport(
       target_draft_id: draftId,
       target_product_id: input.productId,
     }).single()
-    if (error) throw safeDatabaseMessage(error)
+    if (error) throw databaseFailure("existing_product_attach", error)
+    logInstagramInfo("import.completed", {
+      action: input.action,
+      businessId: business.id,
+      draftId,
+      durationMs: Date.now() - startedAt,
+      productId: data?.product_id,
+      traceId,
+      userId: user.id,
+    })
     return {
       data: data ? { productId: data.product_id } : {},
       message: "Instagram post attached to the existing product.",
@@ -261,7 +329,15 @@ export async function manageInstagramImport(
       target_draft_id: draftId,
       target_resolution: "ignored",
     })
-    if (error) throw safeDatabaseMessage(error)
+    if (error) throw databaseFailure("draft_discard", error)
+    logInstagramInfo("import.completed", {
+      action: input.action,
+      businessId: business.id,
+      draftId,
+      durationMs: Date.now() - startedAt,
+      traceId,
+      userId: user.id,
+    })
     return { data: {}, message: "Instagram import discarded." }
   }
 
@@ -271,7 +347,7 @@ export async function manageInstagramImport(
       target_business_id: business.id,
       target_draft_id: draftId,
     })
-    if (saveResult.error) throw safeDatabaseMessage(saveResult.error)
+    if (saveResult.error) throw databaseFailure("pre_approval_save", saveResult.error)
   }
   const { data, error } = await supabase.rpc("approve_instagram_product_draft", {
     confirm_create_new: input.confirmCreateNew,
@@ -279,8 +355,16 @@ export async function manageInstagramImport(
     target_business_id: business.id,
     target_draft_id: draftId,
   }).single()
-  if (error) throw safeDatabaseMessage(error)
+  if (error) throw databaseFailure("draft_approval", error)
   if (!data) {
+    logInstagramWarning("import.approval_missing_result", {
+      action: input.action,
+      businessId: business.id,
+      draftId,
+      durationMs: Date.now() - startedAt,
+      traceId,
+      userId: user.id,
+    })
     throw new ApiError(503, "INSTAGRAM_IMPORT_FAILED", "We couldn't create the catalogue product.")
   }
 
@@ -290,6 +374,17 @@ export async function manageInstagramImport(
     data.product_id,
     user.id,
   )
+  logInstagramInfo("import.completed", {
+    action: input.action,
+    businessId: business.id,
+    draftId,
+    durationMs: Date.now() - startedAt,
+    imageCopied,
+    productId: data.product_id,
+    published: input.publish,
+    traceId,
+    userId: user.id,
+  })
   return {
     data: { productId: data.product_id },
     message: input.publish

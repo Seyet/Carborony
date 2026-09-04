@@ -3,10 +3,15 @@ import { type NextRequest, NextResponse } from "next/server"
 import { accessTokenFingerprint } from "@/features/instagram/server/config"
 import { hashInstagramOAuthState } from "@/features/instagram/server/connect-instagram"
 import {
+  logInstagramError,
+  logInstagramInfo,
+  logInstagramWarning,
+  newInstagramTraceId,
+} from "@/features/instagram/server/logger"
+import {
   exchangeAuthorizationCode,
   exchangeLongLivedToken,
   getInstagramProfile,
-  MetaInstagramError,
 } from "@/features/instagram/server/meta-client"
 import { encryptInstagramToken } from "@/features/instagram/server/token-vault"
 import { getCurrentUser } from "@/lib/auth/session"
@@ -47,16 +52,40 @@ function failureResultForStage(stage: string) {
 }
 
 export async function GET(request: NextRequest) {
+  const traceId = newInstagramTraceId()
+  const startedAt = Date.now()
   const state = request.nextUrl.searchParams.get("state")
   const code = request.nextUrl.searchParams.get("code")
   const denied = request.nextUrl.searchParams.has("error")
+  const stateReference = state && state.length <= 256
+    ? hashInstagramOAuthState(state).slice(0, 12)
+    : undefined
+
+  logInstagramInfo("oauth.callback_received", {
+    authorizationDenied: denied,
+    hasCode: Boolean(code),
+    hasState: Boolean(state),
+    stateReference,
+    traceId,
+  })
 
   if (!state || state.length > 256) {
+    logInstagramWarning("oauth.callback_rejected", {
+      durationMs: Date.now() - startedAt,
+      reason: "invalid_state_format",
+      traceId,
+    })
     return resultRedirect(request, "/app/settings?section=integrations", "invalid_state")
   }
 
   const user = await getCurrentUser()
   if (!user) {
+    logInstagramWarning("oauth.callback_rejected", {
+      durationMs: Date.now() - startedAt,
+      reason: "auth_required",
+      stateReference,
+      traceId,
+    })
     const login = new URL("/login", request.url)
     login.searchParams.set("next", "/app/settings?section=integrations")
     return NextResponse.redirect(login, 303)
@@ -70,30 +99,105 @@ export async function GET(request: NextRequest) {
   const savedState = stateRows?.[0]
 
   if (stateError || !savedState) {
+    if (stateError) {
+      logInstagramError("oauth.state_consumption_failed", stateError, {
+        durationMs: Date.now() - startedAt,
+        stateReference,
+        traceId,
+        userId: user.id,
+      })
+    } else {
+      logInstagramWarning("oauth.callback_rejected", {
+        durationMs: Date.now() - startedAt,
+        reason: "state_expired_or_used",
+        stateReference,
+        traceId,
+        userId: user.id,
+      })
+    }
     return resultRedirect(request, "/app/settings?section=integrations", "invalid_state")
   }
   const returnPath = safeReturnPath(savedState.return_path)
   if (denied || !code || code.length > 4_096) {
+    logInstagramWarning("oauth.callback_rejected", {
+      businessId: savedState.business_id,
+      durationMs: Date.now() - startedAt,
+      reason: denied ? "authorization_denied" : "missing_or_invalid_code",
+      stateReference,
+      traceId,
+      userId: user.id,
+    })
     return resultRedirect(request, returnPath, denied ? "cancelled" : "missing_code")
   }
 
   let stage = "short_token_exchange"
+  let stageStartedAt = Date.now()
 
   try {
+    logInstagramInfo("oauth.stage_started", {
+      businessId: savedState.business_id,
+      stage,
+      stateReference,
+      traceId,
+      userId: user.id,
+    })
     const shortLived = await exchangeAuthorizationCode(code, request.nextUrl.origin)
+    logInstagramInfo("oauth.stage_completed", {
+      businessId: savedState.business_id,
+      durationMs: Date.now() - stageStartedAt,
+      stage,
+      stateReference,
+      traceId,
+      userId: user.id,
+    })
     stage = "long_token_exchange"
+    stageStartedAt = Date.now()
+    logInstagramInfo("oauth.stage_started", {
+      businessId: savedState.business_id,
+      stage,
+      stateReference,
+      traceId,
+      userId: user.id,
+    })
     const longLived = await exchangeLongLivedToken(shortLived.access_token)
+    logInstagramInfo("oauth.stage_completed", {
+      businessId: savedState.business_id,
+      durationMs: Date.now() - stageStartedAt,
+      stage,
+      stateReference,
+      traceId,
+      userId: user.id,
+    })
     stage = "profile_lookup"
+    stageStartedAt = Date.now()
+    logInstagramInfo("oauth.stage_started", {
+      businessId: savedState.business_id,
+      stage,
+      stateReference,
+      traceId,
+      userId: user.id,
+    })
     const profile = await getInstagramProfile(longLived.access_token)
+    logInstagramInfo("oauth.stage_completed", {
+      businessId: savedState.business_id,
+      durationMs: Date.now() - stageStartedAt,
+      instagramAccountId: profile.user_id ?? profile.id,
+      stage,
+      stateReference,
+      traceId,
+      userId: user.id,
+    })
     const expiresAt = longLived.expires_in
       ? new Date(Date.now() + longLived.expires_in * 1_000).toISOString()
       : null
     stage = "token_encryption"
+    stageStartedAt = Date.now()
     const encrypted = encryptInstagramToken(longLived.access_token)
     const accountType = profile.account_type?.toLocaleLowerCase("en") === "business"
       ? "business"
       : "creator"
     stage = "connection_save"
+    stageStartedAt = Date.now()
     const admin = createAdminClient()
     const { error: connectionError } = await admin.rpc(
       "complete_instagram_connection",
@@ -114,21 +218,36 @@ export async function GET(request: NextRequest) {
     )
 
     if (connectionError) {
-      console.error("Instagram connection save failed", {
-        code: connectionError.code,
-        message: connectionError.message,
+      logInstagramError("oauth.connection_save_failed", connectionError, {
+        businessId: savedState.business_id,
+        durationMs: Date.now() - stageStartedAt,
+        instagramAccountId: profile.user_id ?? profile.id,
+        stage,
+        stateReference,
+        traceId,
+        userId: user.id,
       })
       return resultRedirect(request, returnPath, "save_failed")
     }
 
+    logInstagramInfo("oauth.connection_completed", {
+      businessId: savedState.business_id,
+      durationMs: Date.now() - startedAt,
+      instagramAccountId: profile.user_id ?? profile.id,
+      stateReference,
+      traceId,
+      userId: user.id,
+    })
     return resultRedirect(request, returnPath, "connected")
   } catch (error) {
-    console.error("Instagram OAuth callback failed", {
+    logInstagramError("oauth.callback_failed", error, {
+      businessId: savedState.business_id,
+      durationMs: Date.now() - startedAt,
       stage,
-      name: error instanceof Error ? error.name : "UnknownError",
-      status: error instanceof MetaInstagramError ? error.status : undefined,
-      metaCode: error instanceof MetaInstagramError ? error.metaCode : undefined,
-      metaSubcode: error instanceof MetaInstagramError ? error.metaSubcode : undefined,
+      stageDurationMs: Date.now() - stageStartedAt,
+      stateReference,
+      traceId,
+      userId: user.id,
     })
     return resultRedirect(request, returnPath, failureResultForStage(stage))
   }

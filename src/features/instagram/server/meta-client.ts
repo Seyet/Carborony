@@ -76,14 +76,25 @@ export type InstagramMediaItem = z.output<typeof mediaItemSchema>
 
 export class MetaInstagramError extends Error {
   readonly metaCode?: number
+  readonly metaRequestId?: string
   readonly metaSubcode?: number
+  readonly metaTraceId?: string
   readonly status: number
 
-  constructor(message: string, status: number, metaCode?: number, metaSubcode?: number) {
+  constructor(
+    message: string,
+    status: number,
+    metaCode?: number,
+    metaSubcode?: number,
+    metaRequestId?: string,
+    metaTraceId?: string,
+  ) {
     super(message)
     this.name = "MetaInstagramError"
     this.metaCode = metaCode
     this.metaSubcode = metaSubcode
+    this.metaRequestId = metaRequestId
+    this.metaTraceId = metaTraceId
     this.status = status
   }
 }
@@ -139,6 +150,8 @@ async function metaFetch(url: URL, init: RequestInit = {}) {
       response.status,
       parsedError.success ? parsedError.data.error.code : undefined,
       parsedError.success ? parsedError.data.error.error_subcode : undefined,
+      response.headers.get("x-fb-request-id") ?? undefined,
+      response.headers.get("x-fb-trace-id") ?? undefined,
     )
   }
 

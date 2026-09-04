@@ -19,6 +19,12 @@ import {
   type InstagramMediaItem,
 } from "./meta-client"
 import { decryptInstagramToken, encryptInstagramToken } from "./token-vault"
+import {
+  logInstagramError,
+  logInstagramInfo,
+  logInstagramWarning,
+  newInstagramTraceId,
+} from "./logger"
 
 const refreshWindowMs = 7 * 24 * 60 * 60 * 1_000
 
@@ -147,6 +153,7 @@ async function usableAccessToken(
   ciphertext: string,
   encryptionVersion: number,
   expiresAt: string | null,
+  logContext: { businessId: string; runId: string; traceId: string },
 ) {
   let accessToken = decryptInstagramToken(ciphertext, encryptionVersion)
   let tokenExpiresAt = expiresAt
@@ -161,6 +168,12 @@ async function usableAccessToken(
   }
 
   if (expirationTime - Date.now() <= refreshWindowMs) {
+    const refreshStartedAt = Date.now()
+    logInstagramInfo("sync.token_refresh_started", {
+      ...logContext,
+      connectionId,
+      connectionGeneration,
+    })
     const refreshed = await refreshLongLivedToken(accessToken)
     accessToken = refreshed.access_token
     tokenExpiresAt = refreshed.expires_in
@@ -177,6 +190,12 @@ async function usableAccessToken(
       target_token_fingerprint: accessTokenFingerprint(accessToken),
     })
     if (error) throw new Error("Unable to store the refreshed Instagram credential.", { cause: error })
+    logInstagramInfo("sync.token_refresh_completed", {
+      ...logContext,
+      connectionId,
+      connectionGeneration,
+      durationMs: Date.now() - refreshStartedAt,
+    })
   }
 
   return accessToken
@@ -186,12 +205,29 @@ export async function syncInstagram(): Promise<JsonHandlerResult<{
   draftsCreated: number
   postsReceived: number
 }>> {
+  const traceId = newInstagramTraceId()
+  const startedAt = Date.now()
   const user = await getCurrentUser()
-  if (!user) throw new ApiError(401, "AUTH_REQUIRED", "Sign in to sync Instagram.")
+  if (!user) {
+    logInstagramWarning("sync.rejected", { reason: "auth_required", traceId })
+    throw new ApiError(401, "AUTH_REQUIRED", "Sign in to sync Instagram.")
+  }
   const business = await getCurrentBusiness()
   if (business.roleCode !== "owner") {
+    logInstagramWarning("sync.rejected", {
+      businessId: business.id,
+      reason: "owner_required",
+      traceId,
+      userId: user.id,
+    })
     throw new ApiError(403, "INSTAGRAM_SYNC_FORBIDDEN", "Only the business owner can sync Instagram.")
   }
+
+  logInstagramInfo("sync.requested", {
+    businessId: business.id,
+    traceId,
+    userId: user.id,
+  })
 
   const supabase = await createClient()
   const connectionResult = await supabase.from("instagram_connections")
@@ -199,6 +235,12 @@ export async function syncInstagram(): Promise<JsonHandlerResult<{
     .eq("business_id", business.id)
     .maybeSingle()
   if (connectionResult.error) {
+    logInstagramError("sync.connection_load_failed", connectionResult.error, {
+      businessId: business.id,
+      durationMs: Date.now() - startedAt,
+      traceId,
+      userId: user.id,
+    })
     if (setupError(connectionResult.error.code)) {
       throw new ApiError(503, "INSTAGRAM_SETUP_REQUIRED", "Apply the Instagram database migration first.")
     }
@@ -206,6 +248,13 @@ export async function syncInstagram(): Promise<JsonHandlerResult<{
   }
   const connection = connectionResult.data
   if (!connection || connection.status !== "connected") {
+    logInstagramWarning("sync.rejected", {
+      businessId: business.id,
+      durationMs: Date.now() - startedAt,
+      reason: "not_connected",
+      traceId,
+      userId: user.id,
+    })
     throw new ApiError(409, "INSTAGRAM_NOT_CONNECTED", "Connect Instagram before syncing posts.")
   }
 
@@ -216,6 +265,13 @@ export async function syncInstagram(): Promise<JsonHandlerResult<{
     target_connection_id: connection.id,
   }).single()
   if (runResult.error) {
+    logInstagramError("sync.run_start_failed", runResult.error, {
+      businessId: business.id,
+      connectionId: connection.id,
+      durationMs: Date.now() - startedAt,
+      traceId,
+      userId: user.id,
+    })
     if (runResult.error.code === "55006") {
       throw new ApiError(409, "INSTAGRAM_SYNC_RUNNING", "An Instagram sync is already running.")
     }
@@ -236,6 +292,17 @@ export async function syncInstagram(): Promise<JsonHandlerResult<{
   }
   const runId = runResult.data.run_id
   const connectionGeneration = runResult.data.connection_generation
+  let stage = "credential_load"
+  let stageStartedAt = Date.now()
+
+  logInstagramInfo("sync.run_started", {
+    businessId: business.id,
+    connectionGeneration,
+    connectionId: connection.id,
+    runId,
+    traceId,
+    userId: user.id,
+  })
 
   try {
     const credentialResult = await admin.rpc("get_instagram_connection_credential", {
@@ -255,8 +322,11 @@ export async function syncInstagram(): Promise<JsonHandlerResult<{
       credentialResult.data.encrypted_access_token,
       credentialResult.data.encryption_version,
       credentialResult.data.token_expires_at,
+      { businessId: business.id, runId, traceId },
     )
 
+    stage = "media_and_catalogue_load"
+    stageStartedAt = Date.now()
     const [mediaPage, categoryResult, productResult] = await Promise.all([
       getInstagramMedia(accessToken, connection.instagram_user_id, { limit: 25 }),
       supabase.from("categories")
@@ -275,6 +345,19 @@ export async function syncInstagram(): Promise<JsonHandlerResult<{
       throw new Error("Unable to prepare Instagram product extraction.")
     }
 
+    logInstagramInfo("sync.media_received", {
+      businessId: business.id,
+      categoryCount: categoryResult.data?.length ?? 0,
+      durationMs: Date.now() - stageStartedAt,
+      postCount: mediaPage.data.length,
+      productCount: productResult.data?.length ?? 0,
+      runId,
+      traceId,
+      userId: user.id,
+    })
+
+    stage = "business_currency_load"
+    stageStartedAt = Date.now()
     const businessResult = await supabase.from("businesses")
       .select("currency_code")
       .eq("id", business.id)
@@ -282,6 +365,8 @@ export async function syncInstagram(): Promise<JsonHandlerResult<{
     if (businessResult.error) throw new Error("Unable to load the business currency.")
 
     let draftsCreated = 0
+    stage = "media_ingestion"
+    stageStartedAt = Date.now()
     for (const media of mediaPage.data) {
       const extraction = extractInstagramCaption({
         businessCurrencyCode: businessResult.data.currency_code,
@@ -318,6 +403,18 @@ export async function syncInstagram(): Promise<JsonHandlerResult<{
       if (ingestResult.data?.was_created) draftsCreated += 1
     }
 
+    logInstagramInfo("sync.media_ingested", {
+      businessId: business.id,
+      draftsCreated,
+      durationMs: Date.now() - stageStartedAt,
+      postsReceived: mediaPage.data.length,
+      runId,
+      traceId,
+      userId: user.id,
+    })
+
+    stage = "sync_finalization"
+    stageStartedAt = Date.now()
     const completedAt = new Date().toISOString()
     const [runCompletion, connectionCompletion] = await Promise.all([
       admin.from("instagram_sync_runs").update({
@@ -358,6 +455,16 @@ export async function syncInstagram(): Promise<JsonHandlerResult<{
       )
     }
 
+    logInstagramInfo("sync.completed", {
+      businessId: business.id,
+      draftsCreated,
+      durationMs: Date.now() - startedAt,
+      postsReceived: mediaPage.data.length,
+      runId,
+      traceId,
+      userId: user.id,
+    })
+
     return {
       data: { draftsCreated, postsReceived: mediaPage.data.length },
       message: draftsCreated
@@ -391,17 +498,37 @@ export async function syncInstagram(): Promise<JsonHandlerResult<{
         .eq("status", "connected"),
     ])
     if (runFailure.error || connectionFailure.error) {
-      console.error("Instagram sync failure bookkeeping failed", {
-        connectionUpdateCode: connectionFailure.error?.code,
-        runUpdateCode: runFailure.error?.code,
-      })
+      logInstagramError(
+        "sync.failure_bookkeeping_failed",
+        runFailure.error ?? connectionFailure.error,
+        {
+          businessId: business.id,
+          connectionId: connection.id,
+          connectionUpdateCode: connectionFailure.error?.code,
+          runId,
+          runUpdateCode: runFailure.error?.code,
+          traceId,
+          userId: user.id,
+        },
+      )
     }
 
-    if (error instanceof ApiError) throw error
-    console.error("Instagram sync failed", {
-      metaCode: error instanceof MetaInstagramError ? error.metaCode : undefined,
-      name: error instanceof Error ? error.name : "UnknownError",
+    logInstagramError("sync.failed", error, {
+      businessId: business.id,
+      connectionGeneration,
+      connectionId: connection.id,
+      durationMs: Date.now() - startedAt,
+      requiresAuthorization,
+      runId,
+      stage,
+      stageDurationMs: Date.now() - stageStartedAt,
+      traceId,
+      userId: user.id,
     })
+
+    if (error instanceof ApiError) {
+      throw error
+    }
     throw new ApiError(
       requiresAuthorization ? 409 : 502,
       requiresAuthorization ? "INSTAGRAM_REAUTHORIZATION_REQUIRED" : "INSTAGRAM_SYNC_FAILED",
@@ -411,24 +538,54 @@ export async function syncInstagram(): Promise<JsonHandlerResult<{
 }
 
 export async function disconnectInstagram(): Promise<JsonHandlerResult<Record<string, never>>> {
+  const traceId = newInstagramTraceId()
+  const startedAt = Date.now()
   const user = await getCurrentUser()
-  if (!user) throw new ApiError(401, "AUTH_REQUIRED", "Sign in to disconnect Instagram.")
+  if (!user) {
+    logInstagramWarning("disconnect.rejected", { reason: "auth_required", traceId })
+    throw new ApiError(401, "AUTH_REQUIRED", "Sign in to disconnect Instagram.")
+  }
   const business = await getCurrentBusiness()
   if (business.roleCode !== "owner") {
+    logInstagramWarning("disconnect.rejected", {
+      businessId: business.id,
+      reason: "owner_required",
+      traceId,
+      userId: user.id,
+    })
     throw new ApiError(403, "INSTAGRAM_DISCONNECT_FORBIDDEN", "Only the business owner can disconnect Instagram.")
   }
+
+  logInstagramInfo("disconnect.requested", {
+    businessId: business.id,
+    traceId,
+    userId: user.id,
+  })
   const supabase = await createClient()
   const connectionResult = await supabase.from("instagram_connections")
     .select("id, instagram_user_id, connection_generation")
     .eq("business_id", business.id)
     .maybeSingle()
   if (connectionResult.error) {
+    logInstagramError("disconnect.connection_load_failed", connectionResult.error, {
+      businessId: business.id,
+      durationMs: Date.now() - startedAt,
+      traceId,
+      userId: user.id,
+    })
     if (setupError(connectionResult.error.code)) {
       throw new ApiError(503, "INSTAGRAM_SETUP_REQUIRED", "Apply the Instagram database migration first.")
     }
     throw new ApiError(503, "INSTAGRAM_DISCONNECT_FAILED", "We couldn't load the Instagram connection.")
   }
   if (!connectionResult.data) {
+    logInstagramWarning("disconnect.rejected", {
+      businessId: business.id,
+      durationMs: Date.now() - startedAt,
+      reason: "not_connected",
+      traceId,
+      userId: user.id,
+    })
     throw new ApiError(404, "INSTAGRAM_NOT_CONNECTED", "No Instagram account is connected.")
   }
 
@@ -438,23 +595,47 @@ export async function disconnectInstagram(): Promise<JsonHandlerResult<Record<st
     target_connection_generation: connectionResult.data.connection_generation,
   }).maybeSingle()
   if (credentialResult.error && !setupError(credentialResult.error.code)) {
+    logInstagramError("disconnect.credential_load_failed", credentialResult.error, {
+      businessId: business.id,
+      connectionId: connectionResult.data.id,
+      durationMs: Date.now() - startedAt,
+      traceId,
+      userId: user.id,
+    })
     throw new ApiError(503, "INSTAGRAM_DISCONNECT_FAILED", "We couldn't load the Instagram credential.")
   }
 
   if (credentialResult.data) {
+    const revokeStartedAt = Date.now()
+    logInstagramInfo("disconnect.authorization_revoke_started", {
+      businessId: business.id,
+      connectionId: connectionResult.data.id,
+      traceId,
+      userId: user.id,
+    })
     try {
       const accessToken = decryptInstagramToken(
         credentialResult.data.encrypted_access_token,
         credentialResult.data.encryption_version,
       )
       await revokeInstagramAccess(accessToken, connectionResult.data.instagram_user_id)
+      logInstagramInfo("disconnect.authorization_revoked", {
+        businessId: business.id,
+        connectionId: connectionResult.data.id,
+        durationMs: Date.now() - revokeStartedAt,
+        traceId,
+        userId: user.id,
+      })
     } catch (error) {
       const alreadyInvalid = error instanceof MetaInstagramError
         && ([100, 102, 190].includes(error.metaCode ?? 0) || error.status === 401)
       if (!alreadyInvalid) {
-        console.error("Instagram authorization revocation failed", {
-          metaCode: error instanceof MetaInstagramError ? error.metaCode : undefined,
-          name: error instanceof Error ? error.name : "UnknownError",
+        logInstagramError("disconnect.authorization_revoke_failed", error, {
+          businessId: business.id,
+          connectionId: connectionResult.data.id,
+          durationMs: Date.now() - revokeStartedAt,
+          traceId,
+          userId: user.id,
         })
         throw new ApiError(
           502,
@@ -462,6 +643,13 @@ export async function disconnectInstagram(): Promise<JsonHandlerResult<Record<st
           "Instagram could not revoke access. Please try disconnecting again.",
         )
       }
+      logInstagramWarning("disconnect.authorization_already_invalid", {
+        businessId: business.id,
+        connectionId: connectionResult.data.id,
+        durationMs: Date.now() - revokeStartedAt,
+        traceId,
+        userId: user.id,
+      })
     }
   }
 
@@ -471,17 +659,38 @@ export async function disconnectInstagram(): Promise<JsonHandlerResult<Record<st
     target_connection_generation: connectionResult.data.connection_generation,
   })
   if (error) {
+    logInstagramError("disconnect.persistence_failed", error, {
+      businessId: business.id,
+      connectionId: connectionResult.data.id,
+      durationMs: Date.now() - startedAt,
+      traceId,
+      userId: user.id,
+    })
     if (setupError(error.code)) {
       throw new ApiError(503, "INSTAGRAM_SETUP_REQUIRED", "Apply the Instagram database migration first.")
     }
     throw new ApiError(503, "INSTAGRAM_DISCONNECT_FAILED", "We couldn't disconnect Instagram.")
   }
   if (!data) {
+    logInstagramWarning("disconnect.connection_changed", {
+      businessId: business.id,
+      connectionId: connectionResult.data.id,
+      durationMs: Date.now() - startedAt,
+      traceId,
+      userId: user.id,
+    })
     throw new ApiError(
       409,
       "INSTAGRAM_CONNECTION_CHANGED",
       "The Instagram connection changed while it was being disconnected. Refresh and try again.",
     )
   }
+  logInstagramInfo("disconnect.completed", {
+    businessId: business.id,
+    connectionId: connectionResult.data.id,
+    durationMs: Date.now() - startedAt,
+    traceId,
+    userId: user.id,
+  })
   return { data: {}, message: "Instagram disconnected. Existing products were not changed." }
 }
