@@ -110,8 +110,8 @@ export function AppSidebar({ business }: { business: ShellBusiness }) {
                       onClick={() => setMarketingIsOpen((value) => !value)}
                       aria-label={
                         showChildren
-                          ? "Collapse marketing navigation"
-                          : "Expand marketing navigation"
+                          ? "Collapse social media tools navigation"
+                          : "Expand social media tools navigation"
                       }
                       aria-expanded={showChildren}
                       className="flex size-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"

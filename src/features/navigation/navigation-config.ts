@@ -117,7 +117,7 @@ export const primaryNavigation: readonly NavigationItem[] = [
     permission: "settings.view",
   },
   {
-    title: "Marketing",
+    title: "Social Media Tools",
     href: "/app/marketing",
     icon: Megaphone,
     permission: "settings.view",

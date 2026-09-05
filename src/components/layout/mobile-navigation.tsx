@@ -194,7 +194,7 @@ export function MobileNavigation({ business }: { business: ShellBusiness }) {
                   id="marketing-navigation-heading"
                   className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground"
                 >
-                  Marketing tools
+                  Social Media Tools
                 </h2>
                 <div className="grid grid-cols-2 gap-1 sm:grid-cols-4">
                   {marketingNavigation.map((item) => {
