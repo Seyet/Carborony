@@ -8,6 +8,10 @@
     "start": "next start",
     "lint": "eslint . --max-warnings=0",
     "typecheck": "tsc --noEmit",
+    "test:auth": "node --test tests/password-recovery.test.mjs tests/auth-session.test.mjs",
+    "test:payments": "node --test tests/payment-setup.test.mjs tests/online-payments.test.mjs",
+    "test:payments:sql": "node --test tests/online-payments-sql.test.mjs",
+    "test:storefront": "node --test tests/public-storefront.test.mjs",
     "check": "npm run lint && npm run typecheck"
   },
   "dependencies": {

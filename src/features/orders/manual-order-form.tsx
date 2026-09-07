@@ -1,7 +1,6 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { useRouter } from "next/navigation"
 import { LoaderCircle, Minus, Plus, ShoppingCart, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 
@@ -13,6 +12,7 @@ import { Separator } from "@/components/ui/separator"
 import { Textarea } from "@/components/ui/textarea"
 import type { PosCatalog, PosProduct, PosVariant } from "@/features/sales/pos/types"
 import { postJson } from "@/lib/api/client"
+import { useLoadingRouter } from "@/lib/use-loading-router"
 import { createManualOrderSchema } from "./schemas"
 import type { CreateOrderData } from "./types"
 
@@ -41,7 +41,7 @@ function cartItem(product: PosProduct, variant?: PosVariant): CartItem {
 }
 
 export function ManualOrderForm({ catalog }: { catalog: PosCatalog }) {
-  const router = useRouter()
+  const router = useLoadingRouter()
   const [cart, setCart] = useState<CartItem[]>([])
   const [selectedItem, setSelectedItem] = useState("")
   const [customerId, setCustomerId] = useState("")
@@ -106,7 +106,7 @@ export function ManualOrderForm({ catalog }: { catalog: PosCatalog }) {
   }
 
   function updateQuantity(key: string, value: number) {
-    if (!Number.isFinite(value) || value <= 0 || value > 10_000) return
+    if (!Number.isInteger(value) || value <= 0 || value > 10_000) return
     setCart((current) => current.map((item) => item.key === key ? { ...item, quantity: value } : item))
   }
 
@@ -153,7 +153,7 @@ export function ManualOrderForm({ catalog }: { catalog: PosCatalog }) {
               <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center" key={item.key}>
                 <div className="min-w-0 flex-1"><p className="font-medium">{item.name}</p><p className="text-xs text-muted-foreground">{item.variantName || item.sku || "Standard product"} · {money.format(item.unitPrice)} each</p></div>
                 <div className="flex items-center gap-2">
-                  <div className="flex items-center rounded-lg border"><button aria-label={`Decrease ${item.name} quantity`} className="flex size-8 items-center justify-center text-muted-foreground" onClick={() => updateQuantity(item.key, Math.max(0.001, item.quantity - 1))} type="button"><Minus aria-hidden="true" className="size-3.5" /></button><Input aria-label={`${item.name} quantity`} className="h-8 w-16 rounded-none border-y-0 px-1 text-center" min="0.001" onChange={(event) => updateQuantity(item.key, Number(event.currentTarget.value))} step="0.001" type="number" value={item.quantity} /><button aria-label={`Increase ${item.name} quantity`} className="flex size-8 items-center justify-center text-muted-foreground" onClick={() => updateQuantity(item.key, item.quantity + 1)} type="button"><Plus aria-hidden="true" className="size-3.5" /></button></div>
+                  <div className="flex items-center rounded-lg border"><button aria-label={`Decrease ${item.name} quantity`} className="flex size-8 items-center justify-center text-muted-foreground" onClick={() => updateQuantity(item.key, Math.max(1, item.quantity - 1))} type="button"><Minus aria-hidden="true" className="size-3.5" /></button><Input aria-label={`${item.name} quantity`} className="h-8 w-16 rounded-none border-y-0 px-1 text-center" inputMode="numeric" min="1" onChange={(event) => updateQuantity(item.key, Number(event.currentTarget.value))} step="1" type="number" value={item.quantity} /><button aria-label={`Increase ${item.name} quantity`} className="flex size-8 items-center justify-center text-muted-foreground" onClick={() => updateQuantity(item.key, item.quantity + 1)} type="button"><Plus aria-hidden="true" className="size-3.5" /></button></div>
                   <p className="w-24 text-right font-medium">{money.format(item.quantity * item.unitPrice)}</p>
                   <Button aria-label={`Remove ${item.name}`} onClick={() => setCart((current) => current.filter((line) => line.key !== item.key))} size="icon-sm" type="button" variant="ghost"><Trash2 aria-hidden="true" /></Button>
                 </div>

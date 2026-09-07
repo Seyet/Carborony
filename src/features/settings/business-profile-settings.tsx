@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, type FormEvent } from "react"
-import { useRouter } from "next/navigation"
 import { ExternalLink, LoaderCircle, Save, Store } from "lucide-react"
 import { toast } from "sonner"
 
@@ -10,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { postJson } from "@/lib/api/client"
+import { useLoadingRouter } from "@/lib/use-loading-router"
 import { businessCategories, weekDays } from "./options"
 import { businessProfileSettingsSchema, type BusinessProfileSettingsInput } from "./schemas"
 import { SettingsImagePicker } from "./settings-image-picker"
@@ -27,7 +27,7 @@ export function BusinessProfileSettings({
   business: BusinessData
   canManage: boolean
 }) {
-  const router = useRouter()
+  const router = useLoadingRouter()
   const [pending, setPending] = useState(false)
   const [logoUrl, setLogoUrl] = useState(business.logoUrl)
   const [draft, setDraft] = useState<Draft>({

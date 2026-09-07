@@ -2,7 +2,6 @@
 
 import Image from "next/image"
 import { useMemo, useState } from "react"
-import { useRouter } from "next/navigation"
 import { ImageIcon, LoaderCircle, SlidersHorizontal } from "lucide-react"
 import { toast } from "sonner"
 
@@ -25,6 +24,7 @@ import {
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { postJson } from "@/lib/api/client"
+import { useLoadingRouter } from "@/lib/use-loading-router"
 import type { InventoryOperationData } from "./api-types"
 import { inventoryOperationSchema } from "./schemas"
 import type { InventoryProduct } from "./types"
@@ -50,7 +50,7 @@ function variantLabel(variant: InventoryProduct["variants"][number]) {
 }
 
 export function StockOperationDialog({ product }: { product: InventoryProduct }) {
-  const router = useRouter()
+  const router = useLoadingRouter()
   const [open, setOpen] = useState(false)
   const [pending, setPending] = useState(false)
   const [operation, setOperation] = useState<Operation>("add")
@@ -201,11 +201,11 @@ export function StockOperationDialog({ product }: { product: InventoryProduct })
                 aria-invalid={Boolean(quantityError)}
                 disabled={pending}
                 id={`quantity-${product.id}`}
-                inputMode="decimal"
+                inputMode="numeric"
                 min="0"
                 onChange={(event) => setQuantity(event.currentTarget.value)}
                 placeholder={operation === "adjust" ? String(currentStock) : "0"}
-                step="0.001"
+                step="1"
                 type="number"
                 value={quantity}
               />

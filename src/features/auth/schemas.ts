@@ -47,6 +47,11 @@ export const resendSignupOtpSchema = z.object({ email })
 
 export const forgotPasswordSchema = z.object({ email })
 
+export const verifyRecoveryOtpSchema = z.object({
+  email,
+  token: z.string().trim().regex(/^\d{6,8}$/, "Enter the 6–8 digit code from your email."),
+})
+
 export const resetPasswordSchema = z
   .object({
     confirmPassword: z.string().min(1, "Confirm your password."),
@@ -68,3 +73,4 @@ export type RegistrationInput = z.output<typeof registrationSchema>
 export type ResendSignupOtpInput = z.output<typeof resendSignupOtpSchema>
 export type ResetPasswordInput = z.output<typeof resetPasswordSchema>
 export type VerifySignupOtpInput = z.output<typeof verifySignupOtpSchema>
+export type VerifyRecoveryOtpInput = z.output<typeof verifyRecoveryOtpSchema>

@@ -6,7 +6,7 @@ import { SettingsWorkspace } from "@/features/settings/settings-workspace"
 
 export const metadata: Metadata = { title: "Settings" }
 
-type SettingsSection = "billing" | "business" | "integrations" | "profile" | "regional"
+type SettingsSection = "billing" | "business" | "integrations" | "payments" | "profile" | "regional"
 
 export default async function SettingsPage({
   searchParams,
@@ -21,7 +21,7 @@ export default async function SettingsPage({
   const instagramResult = Array.isArray(params.instagram)
     ? params.instagram[0]
     : params.instagram
-  const initialSection: SettingsSection = requested === "profile" || requested === "regional" || requested === "billing" || requested === "integrations"
+  const initialSection: SettingsSection = requested === "profile" || requested === "regional" || requested === "billing" || requested === "integrations" || requested === "payments"
     ? requested
     : "business"
 

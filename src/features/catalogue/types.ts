@@ -20,6 +20,8 @@ export type CatalogueListItem = {
   status: string
   stockQuantity: number | null
   variantCount: number
+  variantMaxPrice: number | null
+  variantMinPrice: number | null
 }
 
 export type CatalogueResult = {

@@ -18,6 +18,7 @@ import type {
   ResendSignupOtpInput,
   ResetPasswordInput,
   VerifySignupOtpInput,
+  VerifyRecoveryOtpInput,
 } from "@/features/auth/schemas"
 import { ApiError, type JsonHandlerResult } from "@/lib/api/server"
 import { getSafeNextPath } from "@/lib/auth/redirect"
@@ -325,12 +326,40 @@ export async function forgotPassword(
     redirectTo: callbackUrl.toString(),
   })
 
-  if (error) throwSharedProviderError("password recovery", error)
+  if (error && error.code !== "user_not_found") {
+    throwSharedProviderError("password recovery", error)
+  }
 
   return {
     data: { accepted: true },
     message:
-      "If an account exists for that email, you'll receive reset instructions shortly.",
+      "If an account exists for that email, you'll receive a password reset code shortly.",
+  }
+}
+
+export async function verifyRecoveryOtp(
+  input: VerifyRecoveryOtpInput,
+  responseHeaders: Headers,
+): Promise<JsonHandlerResult<AuthRedirectData>> {
+  const supabase = await createAuthClient(responseHeaders)
+  const { data, error } = await supabase.auth.verifyOtp({
+    email: input.email,
+    token: input.token,
+    type: "recovery",
+  })
+
+  if (error) throwOtpVerificationError(error)
+  if (!data.session || !data.user) {
+    throw new ApiError(
+      401,
+      "OTP_VERIFICATION_FAILED",
+      "We couldn't verify that code. Request a new code and try again.",
+    )
+  }
+
+  return {
+    data: { redirectTo: "/reset-password" },
+    message: "Code verified. Choose your new password.",
   }
 }
 
@@ -352,7 +381,7 @@ export async function resetPassword(
     throw new ApiError(
       401,
       "RECOVERY_SESSION_EXPIRED",
-      "This recovery session has expired. Request a new reset link.",
+      "This recovery session has expired. Request a new reset code.",
     )
   }
 
@@ -367,7 +396,7 @@ export async function resetPassword(
     throw new ApiError(
       403,
       "RECOVERY_VERIFICATION_REQUIRED",
-      "Request a new password reset link before choosing a password.",
+      "Request and verify a new password reset code before choosing a password.",
     )
   }
 
@@ -376,6 +405,12 @@ export async function resetPassword(
     password: input.password,
   })
 
+  if (error?.code === "same_password") {
+    throw new ApiError(422, "SAME_PASSWORD", "Choose a password different from your current password.")
+  }
+  if (error?.code === "weak_password") {
+    throw new ApiError(422, "WEAK_PASSWORD", "Choose a stronger password and try again.")
+  }
   if (error) throwSharedProviderError("password update", error)
 
   await supabase.auth.signOut({ scope: "local" })

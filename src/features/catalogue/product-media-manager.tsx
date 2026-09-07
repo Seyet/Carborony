@@ -2,13 +2,13 @@
 
 import { useState } from "react"
 import Image from "next/image"
-import { useRouter } from "next/navigation"
 import { ArrowLeft, ArrowRight, ImageIcon, Star, Trash2, Video } from "lucide-react"
 import { toast } from "sonner"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { postJson } from "@/lib/api/client"
+import { useLoadingRouter } from "@/lib/use-loading-router"
 import type { MediaMutationData } from "./api-types"
 import type { ProductMediaItem } from "./types"
 
@@ -19,7 +19,7 @@ export function ProductMediaManager({
   initialMedia: ProductMediaItem[]
   productId: string
 }) {
-  const router = useRouter()
+  const router = useLoadingRouter()
   const [items, setItems] = useState(initialMedia)
   const [pendingId, setPendingId] = useState<string | null>(null)
 

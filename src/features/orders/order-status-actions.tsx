@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
 import { ArrowRight, LoaderCircle } from "lucide-react"
 import { toast } from "sonner"
 
@@ -9,11 +8,12 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
 import { postJson } from "@/lib/api/client"
+import { useLoadingRouter } from "@/lib/use-loading-router"
 import { allowedOrderTransitions, orderStatusLabels } from "./order-status"
 import type { OrderStatus, UpdateOrderStatusData } from "./types"
 
 export function OrderStatusActions({ orderId, orderNumber, status }: { orderId: string; orderNumber: string; status: OrderStatus }) {
-  const router = useRouter()
+  const router = useLoadingRouter()
   const [selectedStatus, setSelectedStatus] = useState<OrderStatus | null>(null)
   const [note, setNote] = useState("")
   const [pending, setPending] = useState(false)
@@ -58,4 +58,3 @@ export function OrderStatusActions({ orderId, orderNumber, status }: { orderId: 
     </>
   )
 }
-

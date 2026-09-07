@@ -75,21 +75,38 @@ export const storefrontSettingsSchema = z.object({
   }
 })
 
+export const storefrontPhoneSchema = z.string()
+  .trim()
+  .min(1, "Enter your phone number.")
+  .max(32, "Phone number must be 32 characters or fewer.")
+  .regex(/^[0-9+(). -]+$/, "Enter a valid phone number using digits and an optional country code.")
+  .refine(
+    (value) => {
+      const digitCount = value.replace(/\D/g, "").length
+      return digitCount >= 7 && digitCount <= 15
+    },
+    "Enter a valid phone number with 7 to 15 digits.",
+  )
+  .refine(
+    (value) => !value.includes("+") || /^\+[^+]*$/.test(value),
+    "Place the country code at the beginning of the phone number.",
+  )
+
 export const storefrontCheckoutSchema = z.object({
   buyerEmail: z.email("Enter a valid email address.").max(254),
   buyerName: z.string().trim().min(2).max(120),
-  buyerPhone: z.string().trim().min(7).max(32).regex(/^[0-9+(). -]+$/, "Enter a valid phone number."),
+  buyerPhone: storefrontPhoneSchema,
   deliveryAddress: z.string().trim().max(500).nullable(),
   deliveryMethod: z.enum(["delivery", "pickup"]),
   deliveryZoneId: z.uuid().nullable(),
   idempotencyKey: z.uuid(),
   items: z.array(z.object({
     productId: z.uuid(),
-    quantity: z.number().finite().positive().max(10_000),
+    quantity: z.number().finite().int().positive().max(10_000),
     variantId: z.uuid().nullable(),
   })).min(1, "Your cart is empty.").max(100),
   notes: z.string().trim().max(500).nullable(),
-  paymentMethod: z.enum(["pay_on_delivery", "bank_transfer"]),
+  paymentMethod: z.enum(["pay_on_delivery", "bank_transfer", "online"]),
   slug: z.string().trim().min(1).max(80).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
 }).superRefine((value, context) => {
   if (value.deliveryMethod === "delivery" && (!value.deliveryAddress || value.deliveryAddress.length < 5)) {

@@ -19,6 +19,48 @@ type DomainTable<
   Relationships: []
 }
 
+type StorefrontPaymentRow = {
+  reference: string
+  business_id: string
+  order_id: string
+  order_number: string
+  store_slug: string
+  buyer_email: string
+  idempotency_key: string
+  request_fingerprint: string
+  provider_mode: string
+  subaccount_code: string
+  commission_percent: number
+  amount_minor: number
+  currency_code: string
+  status: string
+  authorization_url: string | null
+  provider_transaction_id: string | null
+  paid_at: string | null
+  review_reason: string | null
+  created_at: string
+}
+
+type BusinessPaymentAccountRow = {
+  id: string
+  business_id: string
+  provider: string
+  provider_mode: "test" | "live"
+  status: "creating" | "connected" | "reconciliation_required"
+  operation_id: string
+  subaccount_code: string | null
+  bank_code: string
+  bank_name: string
+  account_name: string
+  account_last_four: string
+  commission_percent: number
+  provider_active: boolean
+  provider_verified: boolean
+  created_by: string
+  created_at: string
+  updated_at: string
+}
+
 type CategoryRow = {
   business_id: string
   created_at: string
@@ -689,6 +731,12 @@ export type Database = {
         | "product_id"
         | "quantity_delta"
       >
+      storefront_payments: DomainTable<StorefrontPaymentRow,
+        "business_id" | "order_id" | "order_number" | "store_slug" | "buyer_email" | "idempotency_key" | "request_fingerprint" | "provider_mode" | "subaccount_code" | "commission_percent" | "amount_minor" | "currency_code">
+      business_payment_accounts: DomainTable<
+        BusinessPaymentAccountRow,
+        "business_id" | "provider_mode" | "operation_id" | "bank_code" | "bank_name" | "account_name" | "account_last_four" | "commission_percent" | "created_by"
+      >
       instagram_connections: DomainTable<
         InstagramConnectionRow,
         | "account_type"
@@ -1040,6 +1088,23 @@ export type Database = {
           target_expires_at?: string
           target_return_path?: string
           target_state_hash: string
+        }
+        Returns: string
+      }
+      create_storefront_online_order: {
+        Args: Database["public"]["Functions"]["create_storefront_order"]["Args"] & {
+          checkout_mode: string
+          checkout_fingerprint: string
+        }
+        Returns: StorefrontPaymentRow[]
+      }
+      settle_storefront_payment: {
+        Args: {
+          payment_reference: string
+          verified_amount: number
+          verified_currency: string
+          verified_mode: string
+          verified_transaction_id: string
         }
         Returns: string
       }
@@ -2050,6 +2115,19 @@ export type Database = {
           total_count: number
           tracks_inventory: boolean
           variant_count: number
+          variant_max_price: number | null
+          variant_min_price: number | null
+        }[]
+      }
+      get_order_payment_state: {
+        Args: {
+          target_business_id: string
+          target_order_id: string
+        }
+        Returns: {
+          payment_reference: string
+          review_reason: string | null
+          verified_status: string
         }[]
       }
       set_primary_product_media: {

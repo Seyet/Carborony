@@ -6,7 +6,6 @@ import {
   type ChangeEvent,
   type FormEvent,
 } from "react"
-import { useRouter } from "next/navigation"
 import {
   LoaderCircle,
   Paperclip,
@@ -28,6 +27,8 @@ import {
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { postJson } from "@/lib/api/client"
+import { withGlobalLoading } from "@/lib/global-loading"
+import { useLoadingRouter } from "@/lib/use-loading-router"
 import { createClient } from "@/lib/supabase/client"
 import type {
   CreateExpenseData,
@@ -107,7 +108,7 @@ export function ExpenseDialog({
   staff: ExpenseStaffOption[]
   todayDate: string
 }) {
-  const router = useRouter()
+  const router = useLoadingRouter()
   const [open, setOpen] = useState(initiallyOpen)
   const [draft, setDraft] = useState(() => initialDraft(todayDate))
   const [file, setFile] = useState<File | null>(null)
@@ -261,14 +262,20 @@ export function ExpenseDialog({
         const storagePath = preparation.data.upload.path
         const supabase = createClient()
         setPendingLabel("Uploading receipt…")
-        const upload = await supabase.storage
-          .from("expense-attachments")
-          .uploadToSignedUrl(
-            storagePath,
-            preparation.data.upload.token,
-            file,
-            { contentType: file.type },
-          )
+        const upload = await withGlobalLoading(
+          () => supabase.storage
+            .from("expense-attachments")
+            .uploadToSignedUrl(
+              storagePath,
+              preparation.data.upload.token,
+              file,
+              { contentType: file.type },
+            ),
+          {
+            description: "Please wait while we upload the receipt.",
+            title: "Uploading receipt",
+          },
+        )
 
         if (upload.error) throw new Error("The receipt could not be uploaded.")
 

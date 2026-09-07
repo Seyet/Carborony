@@ -1,10 +1,11 @@
 "use client"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useLoadingRouter } from "@/lib/use-loading-router"
 import { Building2, CreditCard, Globe2, PlugZap, Settings, UserRound } from "lucide-react"
 
 import { cn } from "@/lib/utils"
+import { PaymentSettings } from "@/features/payments/payment-settings"
 import { BillingSettings } from "./billing-settings"
 import { BusinessProfileSettings } from "./business-profile-settings"
 import { InstagramSettings } from "./instagram-settings"
@@ -12,9 +13,10 @@ import { ProfileSettings } from "./profile-settings"
 import { RegionalSettings } from "./regional-settings"
 import type { SettingsPageData } from "./types"
 
-type SettingsSection = "billing" | "business" | "integrations" | "profile" | "regional"
+type SettingsSection = "billing" | "business" | "integrations" | "payments" | "profile" | "regional"
 
 const sectionDetails = {
+  payments: { description: "Bank account for storefront payouts", icon: CreditCard, label: "Payments" },
   billing: { description: "Plan, payment method, and invoices", icon: CreditCard, label: "Billing" },
   business: { description: "Identity, contact details, and opening hours", icon: Building2, label: "Business profile" },
   integrations: { description: "Connect Instagram and other business tools", icon: PlugZap, label: "Integrations" },
@@ -31,9 +33,9 @@ export function SettingsWorkspace({
   initialSection: SettingsSection
   instagramResult?: string
 }) {
-  const router = useRouter()
+  const router = useLoadingRouter()
   const availableSections: SettingsSection[] = data.canViewBusiness
-    ? ["profile", "business", "regional", "integrations", ...(data.billing ? ["billing" as const] : [])]
+    ? ["profile", "business", "regional", "integrations", ...(data.isOwner ? ["payments" as const] : []), ...(data.billing ? ["billing" as const] : [])]
     : ["profile"]
   const [section, setSection] = useState<SettingsSection>(
     availableSections.includes(initialSection) ? initialSection : availableSections[0],
@@ -84,6 +86,7 @@ export function SettingsWorkspace({
           {section === "regional" && data.regional ? <RegionalSettings canManage={data.canManageBusiness} isOwner={data.isOwner} regional={data.regional} /> : null}
           {section === "integrations" ? <InstagramSettings canManage={data.isOwner} data={data.instagram} result={instagramResult} /> : null}
           {section === "billing" && data.billing ? <BillingSettings billing={data.billing} data={data} /> : null}
+          {section === "payments" && data.isOwner ? <PaymentSettings /> : null}
         </main>
       </div>
     </div>

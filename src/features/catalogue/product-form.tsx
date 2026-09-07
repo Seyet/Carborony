@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { postJson } from "@/lib/api/client"
+import { withGlobalLoading } from "@/lib/global-loading"
 import { createClient } from "@/lib/supabase/client"
 import type { MediaMutationData, MediaUploadData, SaveProductData } from "./api-types"
 import { catalogueProductSchema, type CatalogueProductInput } from "./schemas"
@@ -85,6 +86,10 @@ function numberValue(value: string) {
   return Number.isFinite(parsed) ? parsed : Number.NaN
 }
 
+function optionalThresholdValue(value: string) {
+  return value.trim() ? numberValue(value) : 0
+}
+
 function defaultVariant(sellingPrice: string, costPrice: string): FormVariant {
   return {
     attributes: [],
@@ -92,7 +97,7 @@ function defaultVariant(sellingPrice: string, costPrice: string): FormVariant {
     id: crypto.randomUUID(),
     image: null,
     isActive: true,
-    lowStockThreshold: "0",
+    lowStockThreshold: "",
     name: "",
     sellingPrice,
     sku: "",
@@ -160,7 +165,9 @@ function initialFormState(initial: ProductEditorData | null, categories: Catalog
       discountPrice: initial?.discountPrice === null || initial?.discountPrice === undefined
         ? ""
         : String(initial.discountPrice),
-      lowStockThreshold: String(initial?.lowStockThreshold ?? 0),
+      lowStockThreshold: initial?.lowStockThreshold
+        ? String(initial.lowStockThreshold)
+        : "",
       name: initial?.name ?? "",
       sellingPrice: String(initial?.sellingPrice ?? 0),
       sku: initial?.sku ?? "",
@@ -176,7 +183,9 @@ function initialFormState(initial: ProductEditorData | null, categories: Catalog
       id: variant.id,
       image: null,
       isActive: variant.isActive,
-      lowStockThreshold: String(variant.lowStockThreshold),
+      lowStockThreshold: variant.lowStockThreshold
+        ? String(variant.lowStockThreshold)
+        : "",
       name: variant.name,
       sellingPrice: String(variant.sellingPrice),
       sku: variant.sku ?? "",
@@ -221,7 +230,7 @@ export function ProductForm({
       costPrice: numberValue(variant.costPrice),
       id: variant.id,
       isActive: variant.isActive,
-      lowStockThreshold: numberValue(variant.lowStockThreshold),
+      lowStockThreshold: optionalThresholdValue(variant.lowStockThreshold),
       name: variant.name,
       sellingPrice: numberValue(variant.sellingPrice),
       sku: variant.sku.trim() || null,
@@ -236,7 +245,7 @@ export function ProductForm({
       costPrice: numberValue(values.costPrice),
       description: values.description.trim() || null,
       discountPrice: values.discountPrice === "" ? null : numberValue(values.discountPrice),
-      lowStockThreshold: numberValue(values.lowStockThreshold),
+      lowStockThreshold: optionalThresholdValue(values.lowStockThreshold),
       name: values.name,
       sellingPrice: numberValue(values.sellingPrice),
       sku: values.sku.trim() || null,
@@ -249,6 +258,10 @@ export function ProductForm({
     }
   }, [specifications, values, variants])
   const validation = useMemo(() => catalogueProductSchema.safeParse(payload), [payload])
+  const parsedBulkStockQuantity = numberValue(bulkStockQuantity)
+  const bulkStockQuantityIsValid = Number.isInteger(parsedBulkStockQuantity)
+    && parsedBulkStockQuantity >= 0
+    && parsedBulkStockQuantity <= 999_999_999
   const rootCategories = categories.filter((category) => !category.parentId && category.isActive)
   const subcategories = categories.filter((category) =>
     category.parentId === values.categoryId && category.isActive,
@@ -425,7 +438,7 @@ export function ProductForm({
   }
 
   function applyBulkStock() {
-    if (!Number.isFinite(numberValue(bulkStockQuantity)) || numberValue(bulkStockQuantity) < 0) return
+    if (!bulkStockQuantityIsValid) return
     setVariants((current) => current.map((variant) => ({ ...variant, stockQuantity: bulkStockQuantity })))
   }
 
@@ -523,26 +536,31 @@ export function ProductForm({
     let completedCount = 0
     const concurrency = 4
 
-    for (let offset = 0; offset < mediaUploads.length; offset += concurrency) {
-      const chunk = mediaUploads.slice(offset, offset + concurrency)
-      const chunkResults = await Promise.all(chunk.map(async (upload, chunkIndex) => {
-        const index = offset + chunkIndex
-        const preparedUpload = preparation.data.uploads[index]
-        if (!preparedUpload) return { index, succeeded: false }
+    await withGlobalLoading(async () => {
+      for (let offset = 0; offset < mediaUploads.length; offset += concurrency) {
+        const chunk = mediaUploads.slice(offset, offset + concurrency)
+        const chunkResults = await Promise.all(chunk.map(async (upload, chunkIndex) => {
+          const index = offset + chunkIndex
+          const preparedUpload = preparation.data.uploads[index]
+          if (!preparedUpload) return { index, succeeded: false }
 
-        const result = await supabase.storage.from("product-media")
-          .uploadToSignedUrl(preparedUpload.path, preparedUpload.token, upload.file, {
-            contentType: upload.file.type,
-          })
-        completedCount += 1
-        setUploadLabel(`Uploading media ${completedCount} of ${mediaUploads.length}…`)
-        return { index, succeeded: !result.error }
-      }))
+          const result = await supabase.storage.from("product-media")
+            .uploadToSignedUrl(preparedUpload.path, preparedUpload.token, upload.file, {
+              contentType: upload.file.type,
+            })
+          completedCount += 1
+          setUploadLabel(`Uploading media ${completedCount} of ${mediaUploads.length}…`)
+          return { index, succeeded: !result.error }
+        }))
 
-      successfulIndexes.push(
-        ...chunkResults.filter((result) => result.succeeded).map((result) => result.index),
-      )
-    }
+        successfulIndexes.push(
+          ...chunkResults.filter((result) => result.succeeded).map((result) => result.index),
+        )
+      }
+    }, {
+      description: `Please wait while we upload ${mediaUploads.length} media ${mediaUploads.length === 1 ? "file" : "files"}.`,
+      title: "Uploading product media",
+    })
 
     if (successfulIndexes.length) {
       setUploadLabel(`Saving ${successfulIndexes.length} media files…`)
@@ -657,9 +675,9 @@ export function ProductForm({
           <label className="grid gap-2 text-sm font-medium">Cost price ({currencyCode})<Input aria-invalid={Boolean(errorFor("costPrice")) || undefined} inputMode="decimal" min="0" onChange={(event) => setField("costPrice", event.currentTarget.value)} step="0.01" type="number" value={values.costPrice} /></label>
           <label className="grid gap-2 text-sm font-medium">Selling price ({currencyCode})<Input aria-invalid={Boolean(errorFor("sellingPrice")) || undefined} inputMode="decimal" min="0" onChange={(event) => setField("sellingPrice", event.currentTarget.value)} step="0.01" type="number" value={values.sellingPrice} />{errorFor("sellingPrice") ? <span className="text-xs text-destructive">{errorFor("sellingPrice")}</span> : null}</label>
           <label className="grid gap-2 text-sm font-medium">Discount price <span className="font-normal text-muted-foreground">(optional)</span><Input aria-invalid={Boolean(errorFor("discountPrice")) || undefined} inputMode="decimal" min="0" onChange={(event) => setField("discountPrice", event.currentTarget.value)} placeholder="No discount" step="0.01" type="number" value={values.discountPrice} />{errorFor("discountPrice") ? <span className="text-xs text-destructive">{errorFor("discountPrice")}</span> : null}</label>
-          <label className="grid gap-2 text-sm font-medium">Low-stock threshold<Input inputMode="decimal" min="0" onChange={(event) => setField("lowStockThreshold", event.currentTarget.value)} step="0.001" type="number" value={values.lowStockThreshold} /></label>
+          <label className="grid gap-2 text-sm font-medium">Low-stock threshold <span className="font-normal text-muted-foreground">(optional)</span><Input aria-invalid={Boolean(errorFor("lowStockThreshold")) || undefined} inputMode="numeric" min="0" onChange={(event) => setField("lowStockThreshold", event.currentTarget.value)} placeholder="No low-stock alert" step="1" type="number" value={values.lowStockThreshold} />{errorFor("lowStockThreshold") ? <span className="text-xs text-destructive">{errorFor("lowStockThreshold")}</span> : null}</label>
           <label className="flex items-center gap-2 text-sm md:col-span-2 xl:col-span-4"><input checked={values.trackInventory} className="size-4 accent-primary" onChange={(event) => setField("trackInventory", event.currentTarget.checked)} type="checkbox" />Track inventory for this product</label>
-          {values.trackInventory && !hasOptions ? <label className="grid gap-2 text-sm font-medium">Stock quantity<Input aria-invalid={Boolean(errorFor("stockQuantity")) || undefined} inputMode="decimal" min="0" onChange={(event) => setField("stockQuantity", event.currentTarget.value)} step="0.001" type="number" value={values.stockQuantity} /></label> : null}
+          {values.trackInventory && !hasOptions ? <label className="grid gap-2 text-sm font-medium">Stock quantity<Input aria-invalid={Boolean(errorFor("stockQuantity")) || undefined} inputMode="numeric" min="0" onChange={(event) => setField("stockQuantity", event.currentTarget.value)} step="1" type="number" value={values.stockQuantity} />{errorFor("stockQuantity") ? <span className="text-xs text-destructive">{errorFor("stockQuantity")}</span> : null}</label> : null}
           {values.trackInventory && hasOptions ? <p className="rounded-lg bg-muted p-3 text-sm text-muted-foreground md:col-span-2 xl:col-span-4">{variants.length ? <>Total product stock is calculated from the variant quantities: <strong className="text-foreground">{Number.isFinite(payload.stockQuantity) ? payload.stockQuantity : 0}</strong></> : "Generate variants to set stock for each sellable combination."}</p> : null}
         </CardContent>
       </Card>
@@ -694,8 +712,8 @@ export function ProductForm({
               <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-4"><p className="text-sm text-muted-foreground">{generatedCombinations.length ? `${generatedCombinations.length} sellable combination${generatedCombinations.length === 1 ? "" : "s"} ready to review.` : "Add a name and at least one value to every option."}{generatedCombinations.length > 100 ? " Keep the product to 100 combinations or fewer." : ""}</p><Button disabled={!canGenerateVariants} onClick={generateVariants} type="button"><Plus aria-hidden="true" />Review variants</Button></div>
             </section>
 
-            {variants.length ? <section className="grid gap-4"><div className="flex flex-wrap items-end justify-between gap-3"><div><h3 className="font-medium">2. Set up sellable variants</h3><p className="mt-1 text-sm text-muted-foreground">Names and options are created automatically. Override price, stock, SKU, availability, or image where needed.</p></div><Button onClick={applyProductDefaults} size="sm" type="button" variant="outline">Use product price and cost</Button></div><div className="grid gap-3 rounded-xl border bg-muted/20 p-3 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)_auto]"><label className="grid gap-1 text-sm font-medium">Set stock for all<Input min="0" onChange={(event) => setBulkStockQuantity(event.currentTarget.value)} placeholder="e.g. 10" step="0.001" type="number" value={bulkStockQuantity} /></label><Button className="self-end" disabled={!bulkStockQuantity} onClick={applyBulkStock} type="button" variant="outline">Apply stock</Button><label className="grid gap-1 text-sm font-medium">SKU prefix for empty SKUs<Input maxLength={70} onChange={(event) => setBulkSkuPrefix(event.currentTarget.value)} placeholder="e.g. TSHIRT" value={bulkSkuPrefix} /></label><Button className="self-end" disabled={!bulkSkuPrefix.trim()} onClick={applySkuPrefix} type="button" variant="outline">Apply SKUs</Button></div>
-              {variants.map((variant, index) => <section className="grid gap-4 rounded-xl border p-4" key={variant.id}><div className="flex items-center justify-between gap-3"><div><h4 className="font-medium">{variant.name || `Variant ${index + 1}`}</h4><div className="mt-1 flex flex-wrap gap-1 text-xs text-muted-foreground">{variant.attributes.map((attribute) => <span className="rounded bg-muted px-1.5 py-0.5" key={`${attribute.name}:${attribute.value}`}>{attribute.name}: {attribute.value}</span>)}</div></div><label className="flex items-center gap-2 text-sm"><input checked={variant.isActive} className="size-4 accent-primary" onChange={(event) => updateVariant(index, { isActive: event.currentTarget.checked })} type="checkbox" />Available</label></div><div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">{variant.attributes.length ? null : <label className="grid gap-2 text-sm font-medium">Variant name<Input maxLength={120} onChange={(event) => updateVariant(index, { name: event.currentTarget.value })} value={variant.name} /></label>}<label className="grid gap-2 text-sm font-medium">SKU <span className="font-normal text-muted-foreground">(optional)</span><Input maxLength={80} onChange={(event) => updateVariant(index, { sku: event.currentTarget.value })} value={variant.sku} /></label><label className="grid gap-2 text-sm font-medium">Selling price<Input min="0" onChange={(event) => updateVariant(index, { sellingPrice: event.currentTarget.value })} step="0.01" type="number" value={variant.sellingPrice} /></label><label className="grid gap-2 text-sm font-medium">Cost price<Input min="0" onChange={(event) => updateVariant(index, { costPrice: event.currentTarget.value })} step="0.01" type="number" value={variant.costPrice} /></label><label className="grid gap-2 text-sm font-medium">Stock quantity<Input min="0" onChange={(event) => updateVariant(index, { stockQuantity: event.currentTarget.value })} step="0.001" type="number" value={variant.stockQuantity} /></label><label className="grid gap-2 text-sm font-medium">Low-stock threshold<Input min="0" onChange={(event) => updateVariant(index, { lowStockThreshold: event.currentTarget.value })} step="0.001" type="number" value={variant.lowStockThreshold} /></label><label className="grid gap-2 text-sm font-medium">Variant image <span className="font-normal text-muted-foreground">(optional)</span><span className="flex h-8 cursor-pointer items-center gap-2 rounded-lg border border-dashed px-2.5 text-xs text-muted-foreground"><ImagePlus aria-hidden="true" className="size-4" /><span className="truncate">{variant.image?.name ?? "Choose image"}</span><input accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={(event) => chooseVariantImage(index, event)} type="file" /></span></label></div></section>)}
+            {variants.length ? <section className="grid gap-4"><div className="flex flex-wrap items-end justify-between gap-3"><div><h3 className="font-medium">2. Set up sellable variants</h3><p className="mt-1 text-sm text-muted-foreground">Names and options are created automatically. Override price, stock, SKU, availability, or image where needed.</p></div><Button onClick={applyProductDefaults} size="sm" type="button" variant="outline">Use product price and cost</Button></div><div className="grid gap-3 rounded-xl border bg-muted/20 p-3 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)_auto]"><label className="grid gap-1 text-sm font-medium">Set stock for all<Input aria-invalid={(Boolean(bulkStockQuantity) && !bulkStockQuantityIsValid) || undefined} inputMode="numeric" min="0" onChange={(event) => setBulkStockQuantity(event.currentTarget.value)} placeholder="e.g. 10" step="1" type="number" value={bulkStockQuantity} /></label><Button className="self-end" disabled={!bulkStockQuantity || !bulkStockQuantityIsValid} onClick={applyBulkStock} type="button" variant="outline">Apply stock</Button><label className="grid gap-1 text-sm font-medium">SKU prefix for empty SKUs<Input maxLength={70} onChange={(event) => setBulkSkuPrefix(event.currentTarget.value)} placeholder="e.g. TSHIRT" value={bulkSkuPrefix} /></label><Button className="self-end" disabled={!bulkSkuPrefix.trim()} onClick={applySkuPrefix} type="button" variant="outline">Apply SKUs</Button></div>
+              {variants.map((variant, index) => <section className="grid gap-4 rounded-xl border p-4" key={variant.id}><div className="flex items-center justify-between gap-3"><div><h4 className="font-medium">{variant.name || `Variant ${index + 1}`}</h4><div className="mt-1 flex flex-wrap gap-1 text-xs text-muted-foreground">{variant.attributes.map((attribute) => <span className="rounded bg-muted px-1.5 py-0.5" key={`${attribute.name}:${attribute.value}`}>{attribute.name}: {attribute.value}</span>)}</div></div><label className="flex items-center gap-2 text-sm"><input checked={variant.isActive} className="size-4 accent-primary" onChange={(event) => updateVariant(index, { isActive: event.currentTarget.checked })} type="checkbox" />Available</label></div><div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">{variant.attributes.length ? null : <label className="grid gap-2 text-sm font-medium">Variant name<Input maxLength={120} onChange={(event) => updateVariant(index, { name: event.currentTarget.value })} value={variant.name} /></label>}<label className="grid gap-2 text-sm font-medium">SKU <span className="font-normal text-muted-foreground">(optional)</span><Input maxLength={80} onChange={(event) => updateVariant(index, { sku: event.currentTarget.value })} value={variant.sku} /></label><label className="grid gap-2 text-sm font-medium">Selling price<Input min="0" onChange={(event) => updateVariant(index, { sellingPrice: event.currentTarget.value })} step="0.01" type="number" value={variant.sellingPrice} /></label><label className="grid gap-2 text-sm font-medium">Cost price<Input min="0" onChange={(event) => updateVariant(index, { costPrice: event.currentTarget.value })} step="0.01" type="number" value={variant.costPrice} /></label><label className="grid gap-2 text-sm font-medium">Stock quantity<Input inputMode="numeric" min="0" onChange={(event) => updateVariant(index, { stockQuantity: event.currentTarget.value })} step="1" type="number" value={variant.stockQuantity} /></label><label className="grid gap-2 text-sm font-medium">Low-stock threshold <span className="font-normal text-muted-foreground">(optional)</span><Input inputMode="numeric" min="0" onChange={(event) => updateVariant(index, { lowStockThreshold: event.currentTarget.value })} placeholder="No alert" step="1" type="number" value={variant.lowStockThreshold} /></label><label className="grid gap-2 text-sm font-medium">Variant image <span className="font-normal text-muted-foreground">(optional)</span><span className="flex h-8 cursor-pointer items-center gap-2 rounded-lg border border-dashed px-2.5 text-xs text-muted-foreground"><ImagePlus aria-hidden="true" className="size-4" /><span className="truncate">{variant.image?.name ?? "Choose image"}</span><input accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={(event) => chooseVariantImage(index, event)} type="file" /></span></label></div></section>)}
             </section> : <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">Add choices, then select Review variants to create the sellable combinations.</p>}
           </> : <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">Customers will buy this as one product using the price and stock entered above.</p>}
           {variantError ? <p className="text-xs text-destructive" role="alert">{variantError}</p> : null}

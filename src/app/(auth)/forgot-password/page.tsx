@@ -6,14 +6,14 @@ import { AuthCard } from "@/features/auth/components/auth-card"
 import { ForgotPasswordForm } from "@/features/auth/components/forgot-password-form"
 
 export const metadata: Metadata = {
-  description: "Request password reset instructions for your account.",
+  description: "Verify an email code and choose a new password for your account.",
   title: "Forgot password",
 }
 
 export default function ForgotPasswordPage() {
   return (
     <AuthCard
-      description="Enter the email linked to your account and we'll send reset instructions."
+      description="Enter your email, verify the code we send, then choose a new password."
       footer={
         <Link
           className="inline-flex items-center gap-1.5 font-medium text-foreground underline-offset-4 hover:underline"

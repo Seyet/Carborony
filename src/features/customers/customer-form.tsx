@@ -1,7 +1,6 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { useRouter } from "next/navigation"
 import { LoaderCircle, Save } from "lucide-react"
 import { toast } from "sonner"
 
@@ -10,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { postJson } from "@/lib/api/client"
+import { useLoadingRouter } from "@/lib/use-loading-router"
 import { saveCustomerSchema } from "./schemas"
 import { customerSegmentLabels } from "./customer-segment"
 import { customerSegments, type CustomerProfile, type SaveCustomerData } from "./types"
@@ -51,7 +51,7 @@ function initialDraft(customer?: CustomerProfile): CustomerDraft {
 }
 
 export function CustomerForm({ customer }: { customer?: CustomerProfile }) {
-  const router = useRouter()
+  const router = useLoadingRouter()
   const [draft, setDraft] = useState(() => initialDraft(customer))
   const [touched, setTouched] = useState<Set<keyof CustomerDraft>>(new Set())
   const [pending, setPending] = useState(false)

@@ -7,6 +7,7 @@ import type { Json } from "@/types/database"
 import { storefrontCopy } from "../copy"
 import type { PublicStorefront, StorefrontDeliveryZone, StorefrontProduct, StorefrontSpecification, StorefrontVariant } from "../types"
 import { publicStorageUrl } from "./media-url"
+import { onlinePaymentMode } from "@/features/payments/server/storefront-payments"
 
 type JsonRecord = Record<string, Json | undefined>
 
@@ -84,15 +85,35 @@ export const getPublicStorefront = cache(async (
 ): Promise<PublicStorefront | null> => {
   const supabase = await createClient()
   const [storeResult, productsResult] = await Promise.all([
-    supabase.rpc("get_public_storefront", { include_draft: preview, store_slug: slug }).maybeSingle(),
+    // Both functions are STABLE reads. GET enables bounded retries for transient
+    // network failures without retrying any storefront mutation.
+    supabase.rpc("get_public_storefront", {
+      include_draft: preview,
+      store_slug: slug,
+    }, { get: true }).maybeSingle(),
     supabase.rpc("get_public_storefront_products", {
       include_draft: preview,
       selected_product_id: productId,
       store_slug: slug,
-    }),
+    }, { get: true }),
   ])
 
   if (storeResult.error || productsResult.error) {
+    for (const { operation, result } of [
+      { operation: "get_public_storefront", result: storeResult },
+      { operation: "get_public_storefront_products", result: productsResult },
+    ]) {
+      if (!result.error) continue
+      console.error("Public storefront query failed", {
+        operation,
+        status: result.status,
+        code: result.error.code,
+        message: result.error.message.slice(0, 500),
+        networkCode: result.error.details?.match(
+          /\b(?:UND_ERR_[A-Z_]+|ECONNRESET|ENOTFOUND|ETIMEDOUT|EAI_AGAIN)\b/,
+        )?.[0],
+      })
+    }
     const error = storeResult.error ?? productsResult.error
     if (["42883", "PGRST202", "PGRST204", "PGRST205"].includes(error?.code ?? "")) return null
     throw new Error("Unable to load this storefront.", { cause: error })
@@ -126,6 +147,7 @@ export const getPublicStorefront = cache(async (
   })
 
   return {
+    onlinePaymentMode: store.currency_code === "NGN" && store.storefront_status === "published" ? await onlinePaymentMode(store.business_id) : null,
     businessId: store.business_id,
     businessName: store.business_name,
     currencyCode: store.currency_code,

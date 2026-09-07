@@ -1,8 +1,8 @@
 import { z } from "zod"
 
 const quantity = z.number().finite().positive("Quantity must be greater than zero.")
+  .int("Quantity must be a whole number.")
   .max(10_000, "Quantity is too large.")
-  .refine((value) => Number.isInteger(value * 1000), "Use no more than 3 decimal places.")
 
 const unitPrice = z.number().finite()
   .min(0, "Unit price cannot be negative.")

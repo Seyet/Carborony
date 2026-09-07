@@ -28,6 +28,28 @@ function isSetupError(code: string) {
   return ["PGRST202", "PGRST204", "PGRST205"].includes(code)
 }
 
+function firstQueryError(queries: readonly {
+  operation: string
+  result: {
+    status: number
+    error: { code: string; message: string; details: string } | null
+  }
+}[]) {
+  for (const { operation, result } of queries) {
+    if (!result.error) continue
+    console.error("Customers query failed", {
+      operation,
+      status: result.status,
+      code: result.error.code,
+      message: result.error.message.slice(0, 500),
+      networkCode: result.error.details?.match(
+        /\b(?:UND_ERR_[A-Z_]+|ECONNRESET|ENOTFOUND|ETIMEDOUT|EAI_AGAIN)\b/,
+      )?.[0],
+    })
+  }
+  return queries.find(({ result }) => result.error)?.result.error
+}
+
 export async function getCustomers(filters: {
   page: number
   query: string
@@ -38,20 +60,24 @@ export async function getCustomers(filters: {
   const [businessResult, customersResult, segmentsResult] = await Promise.all([
     supabase.from("businesses").select("currency_code, timezone")
       .eq("id", business.id).single(),
+    // STABLE read-only RPCs use GET so the client can retry network failures.
     supabase.rpc("search_crm_customers", {
       result_limit: customersPageSize,
       result_offset: (filters.page - 1) * customersPageSize,
       search_query: filters.query || undefined,
       selected_segment: filters.segment || undefined,
       target_business_id: business.id,
-    }),
+    }, { get: true }),
     supabase.rpc("get_customer_segment_metrics", {
       target_business_id: business.id,
-    }),
+    }, { get: true }),
   ])
 
-  const firstError = [businessResult, customersResult, segmentsResult]
-    .find((result) => result.error)?.error
+  const firstError = firstQueryError([
+    { operation: "business_settings", result: businessResult },
+    { operation: "search_crm_customers", result: customersResult },
+    { operation: "get_customer_segment_metrics", result: segmentsResult },
+  ])
   if (firstError) {
     if (isSetupError(firstError.code)) throw new CustomersSetupRequiredError()
     throw new Error("Unable to load customers.", { cause: firstError })
@@ -97,17 +123,20 @@ export async function getCustomerDetails(
     supabase.rpc("get_crm_customer_profile", {
       target_business_id: business.id,
       target_customer_id: customerId,
-    }).maybeSingle(),
+    }, { get: true }).maybeSingle(),
     supabase.rpc("get_customer_purchase_history", {
       result_limit: customerHistoryPageSize,
       result_offset: (historyPage - 1) * customerHistoryPageSize,
       target_business_id: business.id,
       target_customer_id: customerId,
-    }),
+    }, { get: true }),
   ])
 
-  const firstError = [businessResult, profileResult, historyResult]
-    .find((result) => result.error)?.error
+  const firstError = firstQueryError([
+    { operation: "business_settings", result: businessResult },
+    { operation: "get_crm_customer_profile", result: profileResult },
+    { operation: "get_customer_purchase_history", result: historyResult },
+  ])
   if (firstError) {
     if (isSetupError(firstError.code)) throw new CustomersSetupRequiredError()
     throw new Error("Unable to load this customer.", { cause: firstError })

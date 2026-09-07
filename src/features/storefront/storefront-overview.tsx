@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import { postJson } from "@/lib/api/client"
+import { withGlobalLoading } from "@/lib/global-loading"
 import { createClient as createSupabaseClient } from "@/lib/supabase/client"
 import { storefrontSettingsSchema } from "./schemas"
 import type { StorefrontAdminData, StorefrontBannerResult, StorefrontBannerUpload, StorefrontStatus } from "./types"
@@ -89,8 +90,19 @@ export function StorefrontOverview({ data }: { data: StorefrontAdminData }) {
       toast.error(preparation.error.message)
       return
     }
-    const upload = await createSupabaseClient().storage.from("storefront-media")
-      .uploadToSignedUrl(preparation.data.path, preparation.data.token, file, { contentType: file.type })
+    const upload = await withGlobalLoading(
+      () => createSupabaseClient().storage.from("storefront-media")
+        .uploadToSignedUrl(
+          preparation.data.path,
+          preparation.data.token,
+          file,
+          { contentType: file.type },
+        ),
+      {
+        description: "Please wait while we upload the storefront banner.",
+        title: "Uploading banner",
+      },
+    )
     if (upload.error) {
       setBannerPending(false)
       toast.error("We couldn't upload the website banner. Please try again.")

@@ -126,6 +126,12 @@ export async function getCatalogue(filters: CatalogueFilters): Promise<Catalogue
       status: product.product_status,
       stockQuantity: product.tracks_inventory ? Number(product.stock_quantity) : null,
       variantCount: Number(product.variant_count),
+      variantMaxPrice: product.variant_max_price == null
+        ? null
+        : Number(product.variant_max_price),
+      variantMinPrice: product.variant_min_price == null
+        ? null
+        : Number(product.variant_min_price),
     })),
     page: filters.page,
     pageCount: Math.max(1, Math.ceil(totalCount / cataloguePageSize)),

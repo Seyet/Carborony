@@ -66,12 +66,14 @@ export type OrderDetailsData = {
   notes: string | null
   number: string
   paymentStatus: string
+  paymentReviewReason: string | null
   placedAt: string
   shippingAmount: number
   status: OrderStatus
   subtotalAmount: number
   taxAmount: number
   totalAmount: number
+  verifiedPaymentStatus: string | null
 }
 
 export type OrdersPageData = {

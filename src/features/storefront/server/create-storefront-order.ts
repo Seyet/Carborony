@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server"
 import type { Json } from "@/types/database"
 import type { StorefrontCheckoutInput } from "../schemas"
 import type { StorefrontCheckoutResult } from "../types"
+import { createOnlineStorefrontOrder } from "@/features/payments/server/storefront-payments"
 
 const safeMessages = new Set([
   "A checkout reference is required.",
@@ -28,6 +29,7 @@ const safeMessages = new Set([
 ])
 
 export async function createStorefrontOrder(input: StorefrontCheckoutInput): Promise<JsonHandlerResult<StorefrontCheckoutResult>> {
+  if (input.paymentMethod === "online") return createOnlineStorefrontOrder(input)
   const supabase = await createClient()
   const items: Json = input.items.map((item) => ({
     product_id: item.productId,

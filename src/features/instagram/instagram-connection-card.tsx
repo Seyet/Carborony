@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
 import {
   AlertTriangle,
   CheckCircle2,
@@ -17,6 +16,16 @@ import { toast } from "sonner"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import {
   Card,
   CardContent,
   CardDescription,
@@ -24,6 +33,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { postJson } from "@/lib/api/client"
+import { useLoadingRouter } from "@/lib/use-loading-router"
 import { cn } from "@/lib/utils"
 import type { InstagramConnection } from "./types"
 
@@ -55,8 +65,9 @@ export function InstagramConnectionCard({
   connection: InstagramConnection
   isPreview?: boolean
 }) {
-  const router = useRouter()
+  const router = useLoadingRouter()
   const [pendingAction, setPendingAction] = useState<ConnectionAction>(null)
+  const [disconnectOpen, setDisconnectOpen] = useState(false)
   const connected = connection.status === "connected"
   const requiresAttention = connection.status === "expired"
     || connection.status === "needs_reauthorization"
@@ -95,8 +106,7 @@ export function InstagramConnectionCard({
   }
 
   async function disconnect() {
-    if (pendingAction) return
-    if (!window.confirm("Disconnect Instagram? Existing catalogue products will not be removed.")) return
+    if (pendingAction || !canManage) return
     setPendingAction("disconnect")
     const response = await postJson<Record<string, never>>(
       "/api/integrations/instagram/disconnect",
@@ -108,10 +118,17 @@ export function InstagramConnectionCard({
       return
     }
     toast.success(response.message ?? "Instagram disconnected.")
+    setDisconnectOpen(false)
     router.refresh()
   }
 
   return (
+    <Dialog
+      open={disconnectOpen}
+      onOpenChange={(open) => {
+        if (pendingAction !== "disconnect") setDisconnectOpen(open)
+      }}
+    >
     <Card className="relative overflow-hidden border-0 bg-card shadow-sm ring-1 ring-foreground/10">
       <span
         aria-hidden="true"
@@ -149,10 +166,10 @@ export function InstagramConnectionCard({
                 {pendingAction === "sync" ? <LoaderCircle aria-hidden="true" className="animate-spin" /> : <RefreshCw aria-hidden="true" />}
                 Sync now
               </Button>
-              <Button disabled={!canManage || Boolean(pendingAction)} onClick={disconnect} variant="ghost">
+              <DialogTrigger render={<Button disabled={!canManage || Boolean(pendingAction)} variant="ghost" />}>
                 {pendingAction === "disconnect" ? <LoaderCircle aria-hidden="true" className="animate-spin" /> : <Unplug aria-hidden="true" />}
                 Disconnect
-              </Button>
+              </DialogTrigger>
             </div>
           ) : (
             <div className="flex flex-wrap gap-2">
@@ -162,10 +179,10 @@ export function InstagramConnectionCard({
                 {!pendingAction ? <ExternalLink aria-hidden="true" /> : null}
               </Button>
               {requiresAttention ? (
-                <Button disabled={!canManage || Boolean(pendingAction)} onClick={disconnect} variant="ghost">
+                <DialogTrigger render={<Button disabled={!canManage || Boolean(pendingAction)} variant="ghost" />}>
                   {pendingAction === "disconnect" ? <LoaderCircle aria-hidden="true" className="animate-spin" /> : <Unplug aria-hidden="true" />}
                   Disconnect
-                </Button>
+                </DialogTrigger>
               ) : null}
             </div>
           )}
@@ -214,5 +231,34 @@ export function InstagramConnectionCard({
         ) : null}
       </CardContent>
     </Card>
+      <DialogContent showCloseButton={pendingAction !== "disconnect"}>
+        <DialogHeader className="pr-8">
+          <span className="mb-1 flex size-10 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+            <Unplug aria-hidden="true" className="size-5" />
+          </span>
+          <DialogTitle>Disconnect Instagram?</DialogTitle>
+          <DialogDescription>
+            Disconnect {connection.username ? `@${connection.username}` : "your Instagram account"} from Carborony?
+            {" "}Post imports will stop until you reconnect. Your existing catalogue products and import drafts will be kept.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <DialogClose render={<Button disabled={pendingAction === "disconnect"} type="button" variant="outline" />}>
+            Cancel
+          </DialogClose>
+          <Button
+            disabled={!canManage || Boolean(pendingAction)}
+            onClick={disconnect}
+            type="button"
+            variant="destructive"
+          >
+            {pendingAction === "disconnect"
+              ? <LoaderCircle aria-hidden="true" className="animate-spin" />
+              : <Unplug aria-hidden="true" />}
+            {pendingAction === "disconnect" ? "Disconnecting…" : "Disconnect Instagram"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }

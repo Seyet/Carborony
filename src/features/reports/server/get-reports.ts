@@ -40,6 +40,7 @@ export class ReportsSetupRequiredError extends Error {
 type QueryError = {
   code?: string
   message?: string
+  details?: string
 } | null
 
 function isSetupError(error: QueryError) {
@@ -49,8 +50,16 @@ function isSetupError(error: QueryError) {
   )
 }
 
-function throwReportError(error: QueryError) {
+function throwReportError(error: QueryError, operation: string) {
   if (!error) return
+  console.error("Reports query failed", {
+    operation,
+    code: error.code ?? "unknown",
+    message: error.message?.slice(0, 500),
+    networkCode: error.details?.match(
+      /\b(?:UND_ERR_[A-Z_]+|ECONNRESET|ENOTFOUND|ETIMEDOUT|EAI_AGAIN)\b/,
+    )?.[0],
+  })
   if (isSetupError(error)) throw new ReportsSetupRequiredError()
   throw new Error("Unable to load reports.", { cause: error })
 }
@@ -196,15 +205,16 @@ export async function getReportsPageData(
     .eq("id", business.id)
     .single()
 
-  throwReportError(businessResult.error)
+  throwReportError(businessResult.error, "business_settings")
 
   const currencyCode = businessResult.data?.currency_code ?? "NGN"
   const timezone = businessResult.data?.timezone ?? "Africa/Lagos"
   const todayDate = dateInTimeZone(timezone)
   const filters = parseReportFilters(query, todayDate)
+  // Report RPCs are STABLE reads; GET enables bounded network retries.
   const optionsRequest = supabase.rpc("get_report_filter_options", {
     target_business_id: business.id,
-  })
+  }, { get: true })
 
   if (filters.report === "sales") {
     const args = {
@@ -218,14 +228,16 @@ export async function getReportsPageData(
     }
     const [optionsResult, summaryResult, rowsResult] = await Promise.all([
       optionsRequest,
-      supabase.rpc("get_sales_report_summary", args).single(),
+      supabase.rpc("get_sales_report_summary", args, { get: true }).single(),
       supabase.rpc("search_sales_report", {
         ...args,
         result_limit: reportsPageSize,
         result_offset: (filters.page - 1) * reportsPageSize,
-      }),
+      }, { get: true }),
     ])
-    throwReportError(optionsResult.error ?? summaryResult.error ?? rowsResult.error)
+    throwReportError(optionsResult.error, "get_report_filter_options")
+    throwReportError(summaryResult.error, "get_sales_report_summary")
+    throwReportError(rowsResult.error, "search_sales_report")
 
     const rawRows = rowsResult.data ?? []
     if (rawRows.length === 0 && filters.page > 1) {
@@ -286,7 +298,7 @@ export async function getReportsPageData(
     const summaryRequest = supabase.rpc("get_inventory_report_summary", {
       selected_category_id: undefined,
       target_business_id: business.id,
-    }).single()
+    }, { get: true }).single()
     const listRequest = inventoryView === "stock-movement"
       ? supabase.rpc("search_inventory_movement_report", {
           range_end: filters.endDate,
@@ -297,19 +309,22 @@ export async function getReportsPageData(
           selected_movement_type: undefined,
           selected_product_id: undefined,
           target_business_id: business.id,
-        })
+        }, { get: true })
       : supabase.rpc("search_inventory_stock_report", {
           result_limit: reportsPageSize,
           result_offset: (filters.page - 1) * reportsPageSize,
           selected_category_id: undefined,
           target_business_id: business.id,
-        })
+        }, { get: true })
     const [optionsResult, summaryResult, rowsResult] = await Promise.all([
       optionsRequest,
       summaryRequest,
       listRequest,
     ])
-    throwReportError(optionsResult.error ?? summaryResult.error ?? rowsResult.error)
+    throwReportError(optionsResult.error, "get_report_filter_options")
+    throwReportError(summaryResult.error, "get_inventory_report_summary")
+    throwReportError(rowsResult.error, inventoryView === "stock-movement"
+      ? "search_inventory_movement_report" : "search_inventory_stock_report")
 
     const rawRows = rowsResult.data ?? []
     if (rawRows.length === 0 && filters.page > 1) {
@@ -419,17 +434,19 @@ export async function getReportsPageData(
           range_end: filters.endDate,
           range_start: filters.startDate,
           target_business_id: business.id,
-        })
+        }, { get: true })
       : supabase.rpc("get_expense_report_by_category", {
           range_end: filters.endDate,
           range_start: filters.startDate,
           target_business_id: business.id,
-        })
+        }, { get: true })
     const [optionsResult, reportResult] = await Promise.all([
       optionsRequest,
       reportRequest,
     ])
-    throwReportError(optionsResult.error ?? reportResult.error)
+    throwReportError(optionsResult.error, "get_report_filter_options")
+    throwReportError(reportResult.error, expenseView === "date"
+      ? "get_expense_report_by_date" : "get_expense_report_by_category")
 
     const rawRows = reportResult.data ?? []
     const categoryRows: ExpenseCategoryReportRow[] = expenseView === "category"
@@ -485,14 +502,16 @@ export async function getReportsPageData(
       range_end: filters.endDate,
       range_start: filters.startDate,
       target_business_id: business.id,
-    }).single(),
+    }, { get: true }).single(),
     supabase.rpc("get_profit_report_by_date", {
       range_end: filters.endDate,
       range_start: filters.startDate,
       target_business_id: business.id,
-    }),
+    }, { get: true }),
   ])
-  throwReportError(optionsResult.error ?? summaryResult.error ?? rowsResult.error)
+  throwReportError(optionsResult.error, "get_report_filter_options")
+  throwReportError(summaryResult.error, "get_profit_report_summary")
+  throwReportError(rowsResult.error, "get_profit_report_by_date")
 
   const summary = summaryResult.data
   const rows: ProfitReportRow[] = (rowsResult.data ?? []).map((row) => ({

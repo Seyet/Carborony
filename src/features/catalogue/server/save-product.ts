@@ -18,6 +18,14 @@ const safeDatabaseMessages = new Set([
   "This product could not be found.",
 ])
 
+const wholeStockConstraints = [
+  "products_reorder_level_whole",
+  "product_variants_stock_whole",
+  "product_variants_low_stock_whole",
+  "inventory_levels_on_hand_whole",
+  "inventory_levels_reserved_whole",
+]
+
 function toRpcProduct(input: CatalogueProductInput): Json {
   return {
     category_id: input.categoryId,
@@ -70,10 +78,18 @@ export async function saveCatalogueProduct(
   if (error) {
     console.error("Catalogue product save failed", {
       code: error.code,
-      details: error.details,
       message: error.message,
     })
 
+    if (error.code === "23514" && wholeStockConstraints.some(
+      (constraint) => error.message.includes(constraint),
+    )) {
+      throw new ApiError(
+        422,
+        "PRODUCT_STOCK_INVALID",
+        "Stock quantities and low-stock thresholds must be whole numbers.",
+      )
+    }
     if (safeDatabaseMessages.has(error.message)) {
       throw new ApiError(422, "PRODUCT_INVALID", error.message)
     }

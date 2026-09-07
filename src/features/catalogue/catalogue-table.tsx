@@ -23,6 +23,23 @@ function formatMoney(currencyCode: string, amount: number) {
   }).format(amount)
 }
 
+function pricePresentation(currencyCode: string, product: CatalogueListItem) {
+  if (product.variantMinPrice !== null && product.variantMaxPrice !== null) {
+    const price = product.variantMinPrice === product.variantMaxPrice
+      ? formatMoney(currencyCode, product.variantMinPrice)
+      : `${formatMoney(currencyCode, product.variantMinPrice)} – ${formatMoney(currencyCode, product.variantMaxPrice)}`
+
+    return { compareAt: null, price }
+  }
+
+  return {
+    compareAt: product.discountPrice === null
+      ? null
+      : formatMoney(currencyCode, product.sellingPrice),
+    price: formatMoney(currencyCode, product.discountPrice ?? product.sellingPrice),
+  }
+}
+
 function stockLabel(product: CatalogueListItem) {
   if (product.stockQuantity === null) return { className: "text-muted-foreground", text: "Not tracked" }
   if (product.stockQuantity <= 0) return { className: "text-destructive", text: "Out of stock" }
@@ -57,6 +74,7 @@ export function CatalogueTable({
           <TableBody>
             {items.map((product) => {
               const stock = stockLabel(product)
+              const price = pricePresentation(currencyCode, product)
               return (
                 <TableRow key={product.id}>
                   <TableCell className="pl-4 sm:pl-6">
@@ -74,8 +92,8 @@ export function CatalogueTable({
                   </TableCell>
                   <TableCell className="text-muted-foreground">{product.categoryName ?? "Uncategorised"}</TableCell>
                   <TableCell>
-                    <span className="font-medium">{formatMoney(currencyCode, product.discountPrice ?? product.sellingPrice)}</span>
-                    {product.discountPrice !== null ? <span className="ml-2 text-xs text-muted-foreground line-through">{formatMoney(currencyCode, product.sellingPrice)}</span> : null}
+                    <span className="font-medium">{price.price}</span>
+                    {price.compareAt !== null ? <span className="ml-2 text-xs text-muted-foreground line-through">{price.compareAt}</span> : null}
                   </TableCell>
                   <TableCell className={stock.className}>{stock.text}</TableCell>
                   <TableCell><Badge className="capitalize" variant={product.status === "active" ? "default" : "secondary"}>{product.status}</Badge></TableCell>

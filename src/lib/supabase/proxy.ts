@@ -10,7 +10,6 @@ import {
 import type { Database } from "@/types/database"
 
 const authRoutes = new Set([
-  "/forgot-password",
   "/login",
   "/register",
   "/verify-otp",

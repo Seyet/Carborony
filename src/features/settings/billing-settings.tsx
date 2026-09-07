@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, type FormEvent } from "react"
-import { useRouter } from "next/navigation"
 import {
   CalendarClock,
   CheckCircle2,
@@ -20,6 +19,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { postJson } from "@/lib/api/client"
+import { useLoadingRouter } from "@/lib/use-loading-router"
 import { formatBusinessDate, formatBusinessMoney } from "@/lib/formatting"
 import { cn } from "@/lib/utils"
 import { billingContactSettingsSchema } from "./schemas"
@@ -60,7 +60,7 @@ function dateLabel(value: string, data: SettingsPageData) {
 }
 
 export function BillingSettings({ data, billing }: { data: SettingsPageData; billing: BillingData }) {
-  const router = useRouter()
+  const router = useLoadingRouter()
   const [billingEmail, setBillingEmail] = useState(billing.billingEmail)
   const [savedEmail, setSavedEmail] = useState(billing.billingEmail)
   const [pending, setPending] = useState(false)

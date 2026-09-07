@@ -10,6 +10,11 @@ import type { UpdateOrderStatusInput } from "../schemas"
 import type { UpdateOrderStatusData } from "../types"
 
 const safeMessages = new Set([
+  "Online payment order totals cannot be changed.",
+  "Online payments and refunds must be verified with Paystack.",
+  "This paid order needs inventory review before processing. Update its stock, then try again.",
+  "This paid order needs payment review before processing. Contact support before fulfilment.",
+  "Verify the online payment before processing this order.",
   "A default inventory location is required.",
   "A paid order must be refunded instead of cancelled.",
   "Select a valid order status.",

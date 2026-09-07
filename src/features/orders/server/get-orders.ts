@@ -28,7 +28,9 @@ export async function getOrders(filters: {
   const supabase = await createClient()
   const [businessResult, metricsResult, ordersResult] = await Promise.all([
     supabase.from("businesses").select("timezone").eq("id", business.id).single(),
-    supabase.rpc("get_order_metrics", { target_business_id: business.id }).single(),
+    // Both RPCs are STABLE reads. GET enables the client's bounded retries
+    // for transient network failures without retrying order mutations.
+    supabase.rpc("get_order_metrics", { target_business_id: business.id }, { get: true }).single(),
     supabase.rpc("search_business_orders", {
       result_limit: ordersPageSize,
       result_offset: (filters.page - 1) * ordersPageSize,
@@ -36,11 +38,24 @@ export async function getOrders(filters: {
       selected_channel: filters.channel || undefined,
       selected_status: filters.status || undefined,
       target_business_id: business.id,
-    }),
+    }, { get: true }),
   ])
 
-  const firstError = [businessResult, metricsResult, ordersResult]
-    .find((result) => result.error)?.error
+  const queryResults = [
+    { operation: "business_timezone", result: businessResult },
+    { operation: "get_order_metrics", result: metricsResult },
+    { operation: "search_business_orders", result: ordersResult },
+  ]
+  for (const { operation, result } of queryResults) {
+    if (!result.error) continue
+    console.error("Orders query failed", {
+      operation,
+      status: result.status,
+      code: result.error.code,
+      message: result.error.message.slice(0, 500),
+    })
+  }
+  const firstError = queryResults.find(({ result }) => result.error)?.result.error
   if (firstError) {
     if (isSetupError(firstError.code)) throw new OrdersSetupRequiredError()
     throw new Error("Unable to load orders.", { cause: firstError })
@@ -93,7 +108,7 @@ export async function getOrderDetails(orderId: string): Promise<OrderDetailsData
   if (!orderResult.data) throw new ApiError(404, "ORDER_NOT_FOUND", "This order could not be found.")
 
   const order = orderResult.data
-  const [itemsResult, historyResult, customerResult, settingsResult] = await Promise.all([
+  const [itemsResult, historyResult, customerResult, settingsResult, paymentStateResult] = await Promise.all([
     supabase.from("order_items")
       .select("id, item_source, product_name, variant_name, sku, quantity, unit_price, discount_amount, line_total")
       .eq("business_id", business.id)
@@ -112,9 +127,14 @@ export async function getOrderDetails(orderId: string): Promise<OrderDetailsData
       .select("date_format, locale, time_format, timezone")
       .eq("id", business.id)
       .single(),
+    supabase.rpc("get_order_payment_state", {
+      target_business_id: business.id,
+      target_order_id: order.id,
+    }, { get: true }).maybeSingle(),
   ])
 
-  const firstError = itemsResult.error ?? historyResult.error ?? customerResult.error ?? settingsResult.error
+  const firstError = itemsResult.error ?? historyResult.error ?? customerResult.error
+    ?? settingsResult.error ?? paymentStateResult.error
   if (firstError) {
     if (isSetupError(firstError.code)) throw new OrdersSetupRequiredError()
     throw new Error("Unable to load order details.", { cause: firstError })
@@ -161,11 +181,13 @@ export async function getOrderDetails(orderId: string): Promise<OrderDetailsData
     notes: order.notes,
     number: order.order_number,
     paymentStatus: order.payment_status,
+    paymentReviewReason: paymentStateResult.data?.review_reason ?? null,
     placedAt: order.placed_at,
     shippingAmount: Number(order.shipping_amount),
     status: order.status as OrderStatus,
     subtotalAmount: Number(order.subtotal_amount),
     taxAmount: Number(order.tax_amount),
     totalAmount: Number(order.total_amount),
+    verifiedPaymentStatus: paymentStateResult.data?.verified_status ?? null,
   }
 }

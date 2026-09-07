@@ -78,7 +78,11 @@ export function InventoryProductsTable({
                   </TableCell>
                   <TableCell className="text-muted-foreground">{product.categoryName ?? "Uncategorised"}</TableCell>
                   <TableCell className="font-medium">{product.trackInventory ? formatQuantity(product.stockQuantity) : "—"}</TableCell>
-                  <TableCell className="text-muted-foreground">{product.trackInventory ? formatQuantity(product.lowStockThreshold) : "—"}</TableCell>
+                  <TableCell className="text-muted-foreground">{product.trackInventory
+                    ? product.lowStockThreshold > 0
+                      ? formatQuantity(product.lowStockThreshold)
+                      : "Not set"
+                    : "—"}</TableCell>
                   <TableCell><Badge className={status.className} variant={status.variant}>{status.label}</Badge></TableCell>
                   <TableCell className="text-right font-medium">{formatMoney(currencyCode, product.inventoryValue)}</TableCell>
                   <TableCell className="pr-4 text-right sm:pr-6"><StockOperationDialog product={product} /></TableCell>
@@ -91,4 +95,3 @@ export function InventoryProductsTable({
     </Card>
   )
 }
-

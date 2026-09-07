@@ -1,5 +1,6 @@
 "use client"
 
+import { withGlobalLoading } from "@/lib/global-loading"
 import type { TransactionDocumentKind } from "./types"
 
 type DownloadResult =
@@ -23,43 +24,48 @@ export async function downloadTransactionDocument(
   id: string,
   fallbackNumber: string,
 ): Promise<DownloadResult> {
-  try {
-    const response = await fetch(`/api/transactions/${kind}/${id}/document`, {
-      cache: "no-store",
-      credentials: "same-origin",
-      headers: { Accept: "application/pdf, application/json" },
-    })
+  return withGlobalLoading(async () => {
+    try {
+      const response = await fetch(`/api/transactions/${kind}/${id}/document`, {
+        cache: "no-store",
+        credentials: "same-origin",
+        headers: { Accept: "application/pdf, application/json" },
+      })
 
-    if (!response.ok) {
-      const contentType = response.headers.get("content-type") ?? ""
-      const payload = contentType.includes("application/json")
-        ? await response.json().catch(() => null) as unknown
-        : null
+      if (!response.ok) {
+        const contentType = response.headers.get("content-type") ?? ""
+        const payload = contentType.includes("application/json")
+          ? await response.json().catch(() => null) as unknown
+          : null
+        return {
+          message: getErrorMessage(payload) ?? "We couldn't download this document. Please try again.",
+          ok: false,
+        }
+      }
+
+      const blob = await response.blob()
+      const contentDisposition = response.headers.get("content-disposition")
+      const filename = contentDisposition?.match(/filename="([^"]+)"/)?.[1]
+        ?? `${kind === "invoice" ? "invoice" : "receipt"}-${fallbackNumber}.pdf`
+      const url = URL.createObjectURL(blob)
+      const anchor = document.createElement("a")
+      anchor.href = url
+      anchor.download = filename
+      anchor.style.display = "none"
+      document.body.append(anchor)
+      anchor.click()
+      anchor.remove()
+      window.setTimeout(() => URL.revokeObjectURL(url), 1_000)
+
+      return { ok: true }
+    } catch {
       return {
-        message: getErrorMessage(payload) ?? "We couldn't download this document. Please try again.",
+        message: "We couldn't download this document. Check your connection and try again.",
         ok: false,
       }
     }
-
-    const blob = await response.blob()
-    const contentDisposition = response.headers.get("content-disposition")
-    const filename = contentDisposition?.match(/filename="([^"]+)"/)?.[1]
-      ?? `${kind === "invoice" ? "invoice" : "receipt"}-${fallbackNumber}.pdf`
-    const url = URL.createObjectURL(blob)
-    const anchor = document.createElement("a")
-    anchor.href = url
-    anchor.download = filename
-    anchor.style.display = "none"
-    document.body.append(anchor)
-    anchor.click()
-    anchor.remove()
-    window.setTimeout(() => URL.revokeObjectURL(url), 1_000)
-
-    return { ok: true }
-  } catch {
-    return {
-      message: "We couldn't download this document. Check your connection and try again.",
-      ok: false,
-    }
-  }
+  }, {
+    description: "Please wait while we prepare your PDF.",
+    title: "Preparing download",
+  })
 }

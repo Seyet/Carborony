@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
 import { CircleCheck, LoaderCircle } from "lucide-react"
 import { toast } from "sonner"
 
@@ -22,6 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { postJson } from "@/lib/api/client"
+import { useLoadingRouter } from "@/lib/use-loading-router"
 import {
   invoicePaymentMethods,
   type InvoicePaymentMethod,
@@ -56,7 +56,7 @@ export function MarkInvoicePaidButton({
   invoiceId,
   invoiceNumber,
 }: MarkInvoicePaidButtonProps) {
-  const router = useRouter()
+  const router = useLoadingRouter()
   const [open, setOpen] = useState(false)
   const [pending, setPending] = useState(false)
   const [paymentMethod, setPaymentMethod] = useState<InvoicePaymentMethod>(() =>
