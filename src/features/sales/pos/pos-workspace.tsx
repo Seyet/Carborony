@@ -1,7 +1,6 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { useRouter } from "next/navigation"
 import {
   Banknote,
   Building2,
@@ -34,6 +33,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
 import { postJson } from "@/lib/api/client"
+import { useLoadingRouter } from "@/lib/use-loading-router"
 import { cn } from "@/lib/utils"
 import { downloadTransactionDocument } from "../documents/download-transaction-document"
 import type {
@@ -98,7 +98,7 @@ const emptyExternalProduct: ExternalProductDraft = {
 }
 
 export function PosWorkspace({ catalog }: { catalog: PosCatalog }) {
-  const router = useRouter()
+  const router = useLoadingRouter()
   const [search, setSearch] = useState("")
   const [cart, setCart] = useState<CartItem[]>([])
   const [variantProduct, setVariantProduct] = useState<PosProduct | null>(null)
@@ -151,7 +151,7 @@ export function PosWorkspace({ catalog }: { catalog: PosCatalog }) {
     && Number.isFinite(externalQuantity)
     && externalQuantity > 0
     && externalQuantity <= 10_000
-    && Number.isInteger(externalQuantity * 1000)
+    && Number.isInteger(externalQuantity)
     && Number.isFinite(externalUnitPrice)
     && externalUnitPrice >= 0
     && externalUnitPrice <= 999_999_999_999
@@ -218,7 +218,7 @@ export function PosWorkspace({ catalog }: { catalog: PosCatalog }) {
   }
 
   function updateQuantity(key: string, quantity: number) {
-    if (!Number.isFinite(quantity) || quantity <= 0 || quantity > 10_000) return
+    if (!Number.isInteger(quantity) || quantity <= 0 || quantity > 10_000) return
     setCart((current) => current.map((item) => {
       if (item.key !== key) return item
       if (item.availableStock !== null && quantity > item.availableStock) {
@@ -387,8 +387,8 @@ export function PosWorkspace({ catalog }: { catalog: PosCatalog }) {
                   <div className="flex flex-col items-end gap-2">
                     <button aria-label={`Remove ${item.name}`} className="text-muted-foreground hover:text-destructive" onClick={() => setCart((current) => current.filter((line) => line.key !== item.key))} type="button"><Trash2 aria-hidden="true" className="size-4" /></button>
                     <div className="flex items-center rounded-lg border">
-                      <button aria-label={`Decrease ${item.name} quantity`} className="flex size-8 items-center justify-center text-muted-foreground hover:text-foreground" onClick={() => updateQuantity(item.key, Math.max(0.001, item.quantity - 1))} type="button"><Minus aria-hidden="true" className="size-3.5" /></button>
-                      <Input aria-label={`${item.name} quantity`} className="h-8 w-14 rounded-none border-y-0 px-1 text-center focus-visible:ring-0" max={item.availableStock ?? 10000} min={0.001} onChange={(event) => updateQuantity(item.key, Number(event.currentTarget.value))} step="0.001" type="number" value={item.quantity} />
+                      <button aria-label={`Decrease ${item.name} quantity`} className="flex size-8 items-center justify-center text-muted-foreground hover:text-foreground" onClick={() => updateQuantity(item.key, Math.max(1, item.quantity - 1))} type="button"><Minus aria-hidden="true" className="size-3.5" /></button>
+                      <Input aria-label={`${item.name} quantity`} className="h-8 w-14 rounded-none border-y-0 px-1 text-center focus-visible:ring-0" inputMode="numeric" max={item.availableStock ?? 10000} min={1} onChange={(event) => updateQuantity(item.key, Number(event.currentTarget.value))} step="1" type="number" value={item.quantity} />
                       <button aria-label={`Increase ${item.name} quantity`} className="flex size-8 items-center justify-center text-muted-foreground hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40" disabled={item.availableStock !== null && item.quantity + 1 > item.availableStock} onClick={() => updateQuantity(item.key, item.quantity + 1)} type="button"><Plus aria-hidden="true" className="size-3.5" /></button>
                     </div>
                   </div>
@@ -429,7 +429,7 @@ export function PosWorkspace({ catalog }: { catalog: PosCatalog }) {
             <label className="grid gap-2 text-sm"><span className="font-medium">Product name <span className="text-destructive">*</span></span><Input autoFocus maxLength={160} onChange={(event) => updateExternalProduct("name", event.currentTarget.value)} placeholder="e.g. Custom delivery box" value={externalProduct.name} /></label>
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="grid gap-2 text-sm"><span className="font-medium">Unit price <span className="text-destructive">*</span></span><Input inputMode="decimal" min="0" onChange={(event) => updateExternalProduct("unitPrice", event.currentTarget.value)} placeholder="0.00" step="0.01" type="number" value={externalProduct.unitPrice} /></label>
-              <label className="grid gap-2 text-sm"><span className="font-medium">Quantity <span className="text-destructive">*</span></span><Input inputMode="decimal" max="10000" min="0.001" onChange={(event) => updateExternalProduct("quantity", event.currentTarget.value)} step="0.001" type="number" value={externalProduct.quantity} /></label>
+              <label className="grid gap-2 text-sm"><span className="font-medium">Quantity <span className="text-destructive">*</span></span><Input inputMode="numeric" max="10000" min="1" onChange={(event) => updateExternalProduct("quantity", event.currentTarget.value)} step="1" type="number" value={externalProduct.quantity} /></label>
             </div>
             <label className="grid gap-2 text-sm"><span className="font-medium">SKU <span className="font-normal text-muted-foreground">(optional)</span></span><Input maxLength={80} onChange={(event) => updateExternalProduct("sku", event.currentTarget.value)} placeholder="External reference" value={externalProduct.sku} /></label>
           </div>

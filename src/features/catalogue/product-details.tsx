@@ -81,6 +81,14 @@ export function ProductDetails({
   const otherImages = productImages.filter((media) => media.id !== primaryImage?.id)
   const videos = product.media.filter((media) => media.kind === "video")
   const stock = stockPresentation(product)
+  const variantPrices = product.variants.map((variant) => variant.sellingPrice)
+  const variantMinPrice = variantPrices.length ? Math.min(...variantPrices) : null
+  const variantMaxPrice = variantPrices.length ? Math.max(...variantPrices) : null
+  const displayedPrice = variantMinPrice !== null && variantMaxPrice !== null
+    ? variantMinPrice === variantMaxPrice
+      ? formatMoney(currencyCode, variantMinPrice)
+      : `${formatMoney(currencyCode, variantMinPrice)} – ${formatMoney(currencyCode, variantMaxPrice)}`
+    : formatMoney(currencyCode, product.discountPrice ?? product.sellingPrice)
 
   return (
     <div className="space-y-6">
@@ -138,9 +146,9 @@ export function ProductDetails({
 
             <div className="mt-6 flex flex-wrap items-baseline gap-3">
               <span className="text-3xl font-semibold">
-                {formatMoney(currencyCode, product.discountPrice ?? product.sellingPrice)}
+                {displayedPrice}
               </span>
-              {product.discountPrice !== null ? (
+              {variantPrices.length === 0 && product.discountPrice !== null ? (
                 <span className="text-base text-muted-foreground line-through">
                   {formatMoney(currencyCode, product.sellingPrice)}
                 </span>
@@ -160,7 +168,11 @@ export function ProductDetails({
               </div>
               <div className="rounded-xl border p-4">
                 <dt className="text-xs text-muted-foreground">Low-stock threshold</dt>
-                <dd className="mt-2 font-medium">{product.trackInventory ? formatQuantity(product.lowStockThreshold) : "Not applicable"}</dd>
+                <dd className="mt-2 font-medium">{product.trackInventory
+                  ? product.lowStockThreshold > 0
+                    ? formatQuantity(product.lowStockThreshold)
+                    : "Not set"
+                  : "Not applicable"}</dd>
               </div>
               <div className="rounded-xl border p-4">
                 <dt className="text-xs text-muted-foreground">Variants</dt>
@@ -248,7 +260,9 @@ export function ProductDetails({
                       <TableCell>{formatMoney(currencyCode, variant.sellingPrice)}</TableCell>
                       <TableCell>{formatMoney(currencyCode, variant.costPrice)}</TableCell>
                       <TableCell>{formatQuantity(variant.stockQuantity)}</TableCell>
-                      <TableCell className="pr-4 sm:pr-6">{formatQuantity(variant.lowStockThreshold)}</TableCell>
+                      <TableCell className="pr-4 sm:pr-6">{variant.lowStockThreshold > 0
+                        ? formatQuantity(variant.lowStockThreshold)
+                        : "Not set"}</TableCell>
                     </TableRow>
                   )
                 })}

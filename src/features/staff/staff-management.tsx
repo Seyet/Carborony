@@ -1,7 +1,6 @@
 "use client"
 
 import { useMemo, useState, type FormEvent } from "react"
-import { useRouter } from "next/navigation"
 import {
   Ban,
   CheckCircle2,
@@ -51,6 +50,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { postJson } from "@/lib/api/client"
+import { useLoadingRouter } from "@/lib/use-loading-router"
 import { cn } from "@/lib/utils"
 import type { StaffMutationData } from "./api-types"
 import { inviteStaffSchema } from "./schemas"
@@ -173,7 +173,7 @@ function RolePermissionsPreview({ role }: { role: StaffRoleOption | undefined })
 }
 
 function InviteStaffDialog({ data }: { data: StaffPageData }) {
-  const router = useRouter()
+  const router = useLoadingRouter()
   const [open, setOpen] = useState(false)
   const [pending, setPending] = useState(false)
   const [draft, setDraft] = useState<InviteDraft>(emptyInvite)
@@ -306,7 +306,7 @@ function InviteStaffDialog({ data }: { data: StaffPageData }) {
 }
 
 function StaffActions({ data, record }: { data: StaffPageData; record: StaffRecord }) {
-  const router = useRouter()
+  const router = useLoadingRouter()
   const [pending, setPending] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
   const [roleCode, setRoleCode] = useState(record.roleCode as StaffRoleCode)

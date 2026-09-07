@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, type FormEvent } from "react"
-import { useRouter } from "next/navigation"
 import { KeyRound, Laptop, LoaderCircle, Mail, Save, ShieldCheck, UserRound } from "lucide-react"
 import { toast } from "sonner"
 
@@ -10,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { postJson } from "@/lib/api/client"
+import { useLoadingRouter } from "@/lib/use-loading-router"
 import { profileSettingsSchema, securitySettingsSchema, type ProfileSettingsInput } from "./schemas"
 import { SettingsImagePicker } from "./settings-image-picker"
 import type { SettingsMutationData, SettingsPageData } from "./types"
@@ -29,7 +29,7 @@ function formatDate(value: string | null) {
 }
 
 export function ProfileSettings({ data }: { data: SettingsPageData }) {
-  const router = useRouter()
+  const router = useLoadingRouter()
   const [profile, setProfile] = useState({
     avatar: { action: "keep" } as ProfileSettingsInput["avatar"],
     fullName: data.profile.fullName,

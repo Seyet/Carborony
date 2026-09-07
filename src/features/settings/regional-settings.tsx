@@ -1,13 +1,13 @@
 "use client"
 
 import { useMemo, useState, type FormEvent } from "react"
-import { useRouter } from "next/navigation"
 import { CalendarDays, Clock3, Globe2, LoaderCircle, Save, WalletCards } from "lucide-react"
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { postJson } from "@/lib/api/client"
+import { useLoadingRouter } from "@/lib/use-loading-router"
 import {
   countries,
   currencies,
@@ -48,7 +48,7 @@ export function RegionalSettings({
   isOwner: boolean
   regional: RegionalData
 }) {
-  const router = useRouter()
+  const router = useLoadingRouter()
   const [pending, setPending] = useState(false)
   const [draft, setDraft] = useState<RegionalSettingsInput>({
     ...regional,

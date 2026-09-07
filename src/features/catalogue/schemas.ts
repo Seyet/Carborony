@@ -6,9 +6,11 @@ const money = z.number().finite()
   .refine((value) => Number.isInteger(value * 10_000), "Use no more than 4 decimal places.")
 
 const quantity = z.number().finite()
+  .int("Stock must be a whole number.")
   .min(0, "Stock cannot be negative.")
   .max(999_999_999, "Stock quantity is too large.")
-  .refine((value) => Number.isInteger(value * 1000), "Use no more than 3 decimal places.")
+
+const optionalLowStockThreshold = quantity.optional().default(0)
 
 const nullableText = (maximum: number, message: string) =>
   z.string().trim().max(maximum, message).nullable()
@@ -29,7 +31,7 @@ export const productVariantSchema = z.object({
   costPrice: money,
   id: z.uuid(),
   isActive: z.boolean(),
-  lowStockThreshold: quantity,
+  lowStockThreshold: optionalLowStockThreshold,
   name: z.string().trim().min(1, "Enter the variant name.").max(120),
   sellingPrice: money,
   sku: nullableText(80, "SKU must be 80 characters or fewer."),
@@ -41,7 +43,7 @@ export const catalogueProductSchema = z.object({
   costPrice: money,
   description: nullableText(5_000, "Description must be 5,000 characters or fewer."),
   discountPrice: money.nullable(),
-  lowStockThreshold: quantity,
+  lowStockThreshold: optionalLowStockThreshold,
   name: z.string().trim().min(2, "Product name must be at least 2 characters.").max(160),
   sellingPrice: money,
   sku: nullableText(80, "SKU must be 80 characters or fewer."),

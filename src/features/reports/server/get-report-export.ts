@@ -191,10 +191,14 @@ function validateRange(input: ReportExportQuery, timeZone: string) {
 
 function throwQueryError(
   operation: string,
-  error: { code?: string; message?: string },
+  error: { code?: string; message?: string; details?: string },
 ): never {
   console.error(`Report export ${operation} failed`, {
     code: error.code ?? "unknown",
+    message: error.message?.slice(0, 500),
+    networkCode: error.details?.match(
+      /\b(?:UND_ERR_[A-Z_]+|ECONNRESET|ENOTFOUND|ETIMEDOUT|EAI_AGAIN)\b/,
+    )?.[0],
   })
 
   if (["PGRST202", "PGRST204", "PGRST205"].includes(error.code ?? "")) {
@@ -283,12 +287,12 @@ async function getSalesExport(
     target_business_id: business.id,
   }
   const [summaryResult, rowsResult] = await Promise.all([
-    supabase.rpc("get_sales_report_summary", filters).single(),
+    supabase.rpc("get_sales_report_summary", filters, { get: true }).single(),
     supabase.rpc("search_sales_report", {
       ...filters,
       result_limit: detailExportLimit,
       result_offset: 0,
-    }),
+    }, { get: true }),
   ])
 
   if (summaryResult.error) throwQueryError("sales summary query", summaryResult.error)
@@ -391,7 +395,7 @@ async function getInventoryExport(
   const summaryResult = await supabase.rpc("get_inventory_report_summary", {
     selected_category_id: input.categoryId,
     target_business_id: business.id,
-  }).single()
+  }, { get: true }).single()
 
   if (summaryResult.error) throwQueryError("inventory summary query", summaryResult.error)
 
@@ -415,7 +419,7 @@ async function getInventoryExport(
       selected_movement_type: undefined,
       selected_product_id: input.productId,
       target_business_id: business.id,
-    })
+    }, { get: true })
     if (rowsResult.error) throwQueryError("inventory movement query", rowsResult.error)
 
     const rows = (rowsResult.data ?? []) as InventoryMovementRow[]
@@ -478,7 +482,7 @@ async function getInventoryExport(
     result_offset: 0,
     selected_category_id: input.categoryId,
     target_business_id: business.id,
-  })
+  }, { get: true })
   if (rowsResult.error) throwQueryError("inventory stock query", rowsResult.error)
 
   const rows = (rowsResult.data ?? []) as InventoryStockRow[]
@@ -556,12 +560,12 @@ async function getExpenseExport(
         range_end: input.endDate,
         range_start: input.startDate,
         target_business_id: business.id,
-      })
+      }, { get: true })
     : supabase.rpc("get_expense_report_by_category", {
         range_end: input.endDate,
         range_start: input.startDate,
         target_business_id: business.id,
-      })
+      }, { get: true })
   const result = await request
 
   if (result.error) throwQueryError("expense report query", result.error)
@@ -642,8 +646,8 @@ async function getProfitExport(
     target_business_id: business.id,
   }
   const [summaryResult, rowsResult] = await Promise.all([
-    supabase.rpc("get_profit_report_summary", filters).single(),
-    supabase.rpc("get_profit_report_by_date", filters),
+    supabase.rpc("get_profit_report_summary", filters, { get: true }).single(),
+    supabase.rpc("get_profit_report_by_date", filters, { get: true }),
   ])
 
   if (summaryResult.error) throwQueryError("profit summary query", summaryResult.error)
@@ -720,7 +724,7 @@ export async function getReportExportDocument(
       .single(),
     supabase.rpc("get_report_filter_options", {
       target_business_id: business.id,
-    }),
+    }, { get: true }),
   ])
 
   if (settingsResult.error) throwQueryError("business settings query", settingsResult.error)

@@ -3,8 +3,10 @@ import type {
   ApiFieldErrors,
   ApiResponse,
 } from "@/types/api"
+import { beginGlobalLoading, type GlobalLoadingOptions } from "@/lib/global-loading"
 
 export type PostJsonOptions = {
+  loading?: false | GlobalLoadingOptions
   signal?: AbortSignal
 }
 
@@ -59,9 +61,13 @@ function isAbortError(error: unknown) {
 export async function postJson<TResponse, TBody = unknown>(
   url: string,
   body: TBody,
-  { signal }: PostJsonOptions = {},
+  { loading, signal }: PostJsonOptions = {},
 ): Promise<ApiResponse<TResponse>> {
   let serializedBody: string
+
+  const finishLoading = loading === false
+    ? () => undefined
+    : beginGlobalLoading(loading)
 
   try {
     const serialized = JSON.stringify(body)
@@ -129,5 +135,7 @@ export async function postJson<TResponse, TBody = unknown>(
       "NETWORK_ERROR",
       "We couldn't reach the server. Check your connection and try again.",
     )
+  } finally {
+    finishLoading()
   }
 }

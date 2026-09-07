@@ -9,8 +9,8 @@ const optionalDecimal = z.string().trim().max(32).refine(
   "Enter a valid non-negative amount.",
 )
 const optionalQuantity = z.string().trim().max(32).refine(
-  (value) => value === "" || /^\d+(?:\.\d{1,3})?$/.test(value),
-  "Enter a valid non-negative quantity.",
+  (value) => value === "" || /^\d+$/.test(value),
+  "Enter a whole-number stock quantity.",
 )
 
 export const instagramEditedDraftSchema = z.object({

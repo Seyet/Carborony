@@ -1,7 +1,6 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { useRouter } from "next/navigation"
 import { ArrowDown, ArrowUp, FolderTree, LoaderCircle, Pencil, Plus, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 
@@ -18,6 +17,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { postJson } from "@/lib/api/client"
+import { useLoadingRouter } from "@/lib/use-loading-router"
 import type { CategoryMutationData } from "./api-types"
 import type { CatalogueCategory } from "./types"
 
@@ -36,7 +36,7 @@ const emptyDraft: CategoryDraft = {
 }
 
 export function CategoryManager({ categories }: { categories: CatalogueCategory[] }) {
-  const router = useRouter()
+  const router = useLoadingRouter()
   const [open, setOpen] = useState(false)
   const [pending, setPending] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)

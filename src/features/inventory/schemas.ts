@@ -1,12 +1,9 @@
 import { z } from "zod"
 
 const inventoryQuantity = z.number().finite()
+  .int("Stock quantity must be a whole number.")
   .min(0, "Stock quantity cannot be negative.")
   .max(999_999_999, "Stock quantity is too large.")
-  .refine(
-    (value) => Number.isInteger(value * 1000),
-    "Use no more than 3 decimal places.",
-  )
 
 export const inventoryOperationSchema = z.object({
   note: z.string().trim().max(500, "Notes must be 500 characters or fewer.").nullable(),

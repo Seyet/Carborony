@@ -1,6 +1,7 @@
 "use client"
 
 import { type FormEvent, useState } from "react"
+import Link from "next/link"
 import { toast } from "sonner"
 
 import type { AuthRedirectData } from "@/features/auth/api-types"
@@ -12,6 +13,7 @@ import { postJson } from "@/lib/api/client"
 
 export function ResetPasswordForm() {
   const [pending, setPending] = useState(false)
+  const [needsNewCode, setNeedsNewCode] = useState(false)
   const { getFieldProps, isValid, validateForSubmit, values } =
     useFormValidation(
       resetPasswordSchema,
@@ -33,6 +35,9 @@ export function ResetPasswordForm() {
 
     if (!response.ok) {
       setPending(false)
+      setNeedsNewCode([
+        "RECOVERY_SESSION_EXPIRED", "RECOVERY_VERIFICATION_REQUIRED",
+      ].includes(response.error.code))
       toast.error(response.error.message)
       return
     }
@@ -66,6 +71,11 @@ export function ResetPasswordForm() {
       <SubmitButton disabled={!isValid} pending={pending}>
         Update password
       </SubmitButton>
+      {needsNewCode ? (
+        <Link className="block text-center text-sm font-medium underline" href="/forgot-password">
+          Request a new reset code
+        </Link>
+      ) : null}
     </form>
   )
 }

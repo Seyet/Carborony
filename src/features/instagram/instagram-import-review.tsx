@@ -2,7 +2,6 @@
 
 import { useMemo, useState, type FormEvent } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
 import {
   AlertTriangle,
   ArrowLeft,
@@ -33,6 +32,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { postJson } from "@/lib/api/client"
+import { useLoadingRouter } from "@/lib/use-loading-router"
 import { cn } from "@/lib/utils"
 import type {
   InstagramDraftField,
@@ -106,12 +106,13 @@ function validDraft(draft: InstagramEditableProductDraft) {
     && sellingPrice > 0
     && draft.stockQuantity.trim()
     && Number.isFinite(stockQuantity)
+    && Number.isInteger(stockQuantity)
     && stockQuantity >= 0,
   )
 }
 
 export function InstagramImportReview({ data }: { data: InstagramImportReviewData }) {
-  const router = useRouter()
+  const router = useLoadingRouter()
   const [draft, setDraft] = useState(data.draft)
   const [reviewConfirmed, setReviewConfirmed] = useState(false)
   const [pendingAction, setPendingAction] = useState<ReviewAction>(null)

@@ -98,6 +98,7 @@ export type StorefrontProduct = {
 }
 
 export type PublicStorefront = {
+  onlinePaymentMode: "test" | "live" | null
   businessId: string
   businessName: string
   currencyCode: string
@@ -108,6 +109,8 @@ export type PublicStorefront = {
 }
 
 export type StorefrontCheckoutResult = {
+  paymentUrl?: string
+  paymentReference?: string
   bankTransferInstructions: string | null
   currencyCode: string
   orderId: string
