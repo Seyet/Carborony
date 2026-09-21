@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import Link from "next/link"
+import type { ReactNode } from "react"
 import { Building2, CheckCircle2, ShieldCheck } from "lucide-react"
 
 import { AppLogo } from "@/components/common/app-logo"
@@ -11,7 +12,7 @@ export const metadata: Metadata = {
   },
 }
 
-export default function AuthLayout({ children }: LayoutProps<"/">) {
+export default function AuthLayout({ children }: { children: ReactNode }) {
   return (
     <main className="relative grid min-h-svh flex-1 bg-muted/30 lg:grid-cols-[minmax(360px,0.85fr)_minmax(520px,1.15fr)]">
       <section className="relative hidden overflow-hidden bg-foreground px-10 py-12 text-background lg:flex lg:flex-col">
