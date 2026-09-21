@@ -1,7 +1,8 @@
 import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 
-import { getPublicStorefront } from "@/features/storefront/server/get-public-storefront"
+import { onlinePaymentMode } from "@/features/payments/server/storefront-payments"
+import { getPublicStorefrontInfo } from "@/features/storefront/server/get-public-storefront"
 import { StorefrontCart, StorefrontShell } from "@/features/storefront/storefront-shop"
 
 export const metadata: Metadata = { robots: { index: false, follow: false }, title: "Cart" }
@@ -10,7 +11,12 @@ export default async function StoreCartPage({ params, searchParams }: { params: 
   const [{ slug }, query] = await Promise.all([params, searchParams])
   const rawPreview = query.preview
   const preview = (Array.isArray(rawPreview) ? rawPreview[0] : rawPreview) === "1"
-  const store = await getPublicStorefront(slug, preview)
+  const store = await getPublicStorefrontInfo(slug, preview)
   if (!store) notFound()
-  return <StorefrontShell preview={preview} store={store}><StorefrontCart store={store} /></StorefrontShell>
+  const checkoutStore = {
+    ...store,
+    onlinePaymentMode: store.currencyCode === "NGN" && store.settings.status === "published"
+      ? await onlinePaymentMode(store.businessId) : null,
+  }
+  return <StorefrontShell preview={preview} store={checkoutStore}><StorefrontCart store={checkoutStore} /></StorefrontShell>
 }

@@ -55,3 +55,10 @@ supabase/migrations/*
 !supabase/migrations/20260906060000_catalogue_variant_price_range.sql
 !supabase/migrations/20260906070000_normalize_whole_number_stock.sql
 !supabase/migrations/20260906080000_reconcile_reviewed_order_payments.sql
+!supabase/migrations/20260921090000_paginate_public_storefront.sql
+
+# Historical migrations used by the executable SQL regression suite.
+!supabase/migrations/20260823070000_external_pos_items_and_invoices.sql
+!supabase/migrations/20260823153000_fix_negative_inventory_movements.sql
+!supabase/migrations/20260823164000_completed_order_inventory.sql
+!supabase/migrations/20260824000000_paid_invoice_inventory.sql

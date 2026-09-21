@@ -101,10 +101,9 @@ export function ProductDetails({
                   alt={product.name}
                   className="object-cover"
                   fill
-                  priority
+                  preload
                   sizes="100px"
                   src={primaryImage.publicUrl}
-                  unoptimized
                 />
               ) : (
                 <div className="flex flex-col items-center gap-2 text-sm">
@@ -127,7 +126,7 @@ export function ProductDetails({
                     rel="noreferrer"
                     target="_blank"
                   >
-                    <Image alt="" className="object-cover" fill sizes="96px" src={media.publicUrl} unoptimized />
+                    <Image alt="" className="object-cover" fill sizes="96px" src={media.publicUrl} />
                   </a>
                 ))}
               </div>
@@ -244,7 +243,7 @@ export function ProductDetails({
                       <TableCell className="pl-4 sm:pl-6">
                         <div className="flex min-w-52 items-center gap-3">
                           <span className="relative flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-muted text-muted-foreground">
-                            {variantImage?.publicUrl ? <Image alt="" className="object-cover" fill sizes="40px" src={variantImage.publicUrl} unoptimized /> : <Package aria-hidden="true" className="size-4" />}
+                            {variantImage?.publicUrl ? <Image alt="" className="object-cover" fill sizes="40px" src={variantImage.publicUrl} /> : <Package aria-hidden="true" className="size-4" />}
                           </span>
                           <span>
                             <span className="block font-medium">{variant.name}</span>

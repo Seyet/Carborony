@@ -3,7 +3,7 @@ create role anon;
 create role authenticated;
 create role service_role bypassrls;
 create schema auth;
-create function auth.uid() returns uuid language sql as $$ select null::uuid $$;
+create function auth.uid() returns uuid language sql as $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
 create function public.set_updated_at() returns trigger language plpgsql as $$ begin new.updated_at = now(); return new; end $$;
 create table public.profiles(id uuid primary key);
 create table public.businesses(id uuid primary key, slug text unique, created_by uuid references profiles(id), country_code text default 'NG', currency_code text default 'NGN');
@@ -22,3 +22,12 @@ create table public.order_status_history(business_id uuid, order_id uuid, previo
 create table public.storefront_checkouts(business_id uuid, idempotency_key uuid, order_id uuid, unique(business_id,idempotency_key));
 create table public.sales(business_id uuid, order_id uuid, status text);
 create table public.sale_items(quantity numeric);
+
+-- Authorization boundary fixtures used by the real reconciliation RPC.
+alter table public.orders add column completed_at timestamptz;
+create function public.is_business_member(target_business_id uuid) returns boolean language sql as $$
+  select exists(select 1 from public.businesses where id = target_business_id and created_by = auth.uid())
+$$;
+create function public.has_business_permission(target_business_id uuid, permission_code text) returns boolean language sql as $$
+  select public.is_business_member(target_business_id)
+$$;

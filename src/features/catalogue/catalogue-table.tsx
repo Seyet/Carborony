@@ -81,7 +81,7 @@ export function CatalogueTable({
                     <div className="flex min-w-56 items-center gap-3">
                       <span className="relative flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-muted text-muted-foreground">
                         {product.imageUrl ? (
-                          <Image alt="" className="object-cover" fill sizes="44px" src={product.imageUrl} unoptimized />
+                          <Image alt="" className="object-cover" fill sizes="44px" src={product.imageUrl} />
                         ) : <ImageIcon aria-hidden="true" className="size-5" />}
                       </span>
                       <span>

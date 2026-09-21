@@ -1,11 +1,8 @@
 import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
-import { resolve } from "node:path"
-import { pathToFileURL } from "node:url"
+import { PGlite } from "@electric-sql/pglite"
 import { test } from "node:test"
 
-// Set PGLITE_MODULE to an installed @electric-sql/pglite/dist/index.js; no hosted database is used.
-const runtime = process.env.PGLITE_MODULE
 const read = path => readFileSync(path, "utf8")
 const migration = name => read(`supabase/migrations/${name}.sql`)
 function functionsOnly(sql, name) {
@@ -18,8 +15,7 @@ function functionsOnly(sql, name) {
   return sql.slice(start, sql.indexOf("\n$$;", start) + 4)
 }
 
-test("PostgreSQL online checkout, settlement, inventory and access controls", { skip: !runtime }, async () => {
-  const { PGlite } = await import(pathToFileURL(resolve(runtime)).href)
+test("PostgreSQL online checkout, settlement, inventory and access controls", async () => {
   const db = new PGlite()
   try {
     await db.exec(read("tests/fixtures/online-payments.sql"))
@@ -37,6 +33,8 @@ test("PostgreSQL online checkout, settlement, inventory and access controls", { 
     await db.exec(migration("20260906030000_harden_storefront_online_payments"))
     await db.exec(migration("20260906040000_fix_storefront_payment_inventory_settlement"))
     await db.exec(migration("20260906050000_require_whole_number_stock"))
+    await db.exec(migration("20260906070000_normalize_whole_number_stock"))
+    await db.exec(migration("20260906080000_reconcile_reviewed_order_payments"))
     const owner = "00000000-0000-4000-8000-000000000001", business = "00000000-0000-4000-8000-000000000002", product = "00000000-0000-4000-8000-000000000003", location = "00000000-0000-4000-8000-000000000004"
     await db.query("insert into profiles values ($1)", [owner])
     await db.query("insert into businesses(id,slug,created_by) values ($1,'shop',$2)", [business, owner])
@@ -77,10 +75,19 @@ test("PostgreSQL online checkout, settlement, inventory and access controls", { 
     await db.exec("update inventory_levels set quantity_on_hand=0")
     assert.equal((await settle(second, 500050, "1002")).rows[0].status, "review")
     assert.equal((await db.query("select payment_status from orders where id=$1", [second.order_id])).rows[0].payment_status, "paid")
-    await assert.rejects(db.query("update orders set status='completed' where id=$1", [second.order_id]), /Verify the online payment/)
+    await assert.rejects(db.query("update orders set status='completed' where id=$1", [second.order_id]), /needs payment review/)
     assert.equal((await db.query("select count(*)::int as count from inventory_movements")).rows[0].count, 1)
 
+    // Anonymous and unrelated users cannot advance a paid order under review.
+    await assert.rejects(db.query("select * from update_order_status($1,$2,'confirmed')", [business, second.order_id]), /permission/)
+    await db.exec("select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000099', false)")
+    await assert.rejects(db.query("select * from update_order_status($1,$2,'confirmed')", [business, second.order_id]), /permission/)
+    await db.query("select set_config('request.jwt.claim.sub', $1, false)", [owner])
+    await assert.rejects(db.query("select * from update_order_status($1,$2,'confirmed')", [business, second.order_id]), /inventory review/)
     await db.exec("update inventory_levels set quantity_on_hand=5")
+    // The merchant status transition retries the verified payment after stock is repaired.
+    const advanced = await db.query("select * from update_order_status($1,$2,'confirmed')", [business, second.order_id])
+    assert.equal(advanced.rows[0].current_status, "confirmed")
     assert.equal((await settle(second, 500050, "1002")).rows[0].status, "paid")
     assert.equal(Number((await db.query("select quantity_on_hand from inventory_levels")).rows[0].quantity_on_hand), 3)
     assert.equal((await db.query("select count(*)::int as count from inventory_movements")).rows[0].count, 2)
