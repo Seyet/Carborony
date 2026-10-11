@@ -3,11 +3,10 @@ import "server-only"
 import { cache } from "react"
 
 import { createClient } from "@/lib/supabase/server"
-import type { Json } from "@/types/database"
+import type { Database, Json } from "@/types/database"
 import { storefrontCopy } from "../copy"
 import type { PublicStorefront, StorefrontDeliveryZone, StorefrontProduct, StorefrontSpecification, StorefrontVariant } from "../types"
 import { publicStorageUrl } from "./media-url"
-import { onlinePaymentMode } from "@/features/payments/server/storefront-payments"
 
 type JsonRecord = Record<string, Json | undefined>
 
@@ -78,50 +77,10 @@ function mapDeliveryZones(value: Json): StorefrontDeliveryZone[] {
   }))
 }
 
-export const getPublicStorefront = cache(async (
-  slug: string,
-  preview = false,
-  productId?: string,
-): Promise<PublicStorefront | null> => {
-  const supabase = await createClient()
-  const [storeResult, productsResult] = await Promise.all([
-    // Both functions are STABLE reads. GET enables bounded retries for transient
-    // network failures without retrying any storefront mutation.
-    supabase.rpc("get_public_storefront", {
-      include_draft: preview,
-      store_slug: slug,
-    }, { get: true }).maybeSingle(),
-    supabase.rpc("get_public_storefront_products", {
-      include_draft: preview,
-      selected_product_id: productId,
-      store_slug: slug,
-    }, { get: true }),
-  ])
+type ProductRow = Database["public"]["Functions"]["get_public_storefront_products"]["Returns"][number]
 
-  if (storeResult.error || productsResult.error) {
-    for (const { operation, result } of [
-      { operation: "get_public_storefront", result: storeResult },
-      { operation: "get_public_storefront_products", result: productsResult },
-    ]) {
-      if (!result.error) continue
-      console.error("Public storefront query failed", {
-        operation,
-        status: result.status,
-        code: result.error.code,
-        message: result.error.message.slice(0, 500),
-        networkCode: result.error.details?.match(
-          /\b(?:UND_ERR_[A-Z_]+|ECONNRESET|ENOTFOUND|ETIMEDOUT|EAI_AGAIN)\b/,
-        )?.[0],
-      })
-    }
-    const error = storeResult.error ?? productsResult.error
-    if (["42883", "PGRST202", "PGRST204", "PGRST205"].includes(error?.code ?? "")) return null
-    throw new Error("Unable to load this storefront.", { cause: error })
-  }
-  const store = storeResult.data
-  if (!store) return null
-
-  const products: StorefrontProduct[] = (productsResult.data ?? []).map((product) => {
+export function mapStorefrontProducts(products: ProductRow[]): StorefrontProduct[] {
+  return products.map((product) => {
     const media = mapMedia(product.media)
     const variants = mapVariants(product.variants).map((variant) => ({
       ...variant,
@@ -145,14 +104,35 @@ export const getPublicStorefront = cache(async (
       variants,
     }
   })
+}
+
+// Settings and metadata do not need to fetch the catalogue. React cache shares
+// this read between metadata and the page without sharing authenticated previews.
+export const getPublicStorefrontInfo = cache(async (
+  slug: string,
+  preview = false,
+): Promise<PublicStorefront | null> => {
+  const supabase = await createClient()
+  const storeResult = await supabase.rpc("get_public_storefront", {
+    include_draft: preview,
+    store_slug: slug,
+  }, { get: true }).maybeSingle()
+  if (storeResult.error) {
+    const error = storeResult.error
+    console.error("Public storefront query failed", { code: error.code, message: error.message.slice(0, 500) })
+    if (["42883", "PGRST202", "PGRST204", "PGRST205"].includes(error.code ?? "")) return null
+    throw new Error("Unable to load this storefront.", { cause: error })
+  }
+  const store = storeResult.data
+  if (!store) return null
 
   return {
-    onlinePaymentMode: store.currency_code === "NGN" && store.storefront_status === "published" ? await onlinePaymentMode(store.business_id) : null,
+    onlinePaymentMode: null,
     businessId: store.business_id,
     businessName: store.business_name,
     currencyCode: store.currency_code,
     logoUrl: publicStorageUrl("business-logos", store.logo_path),
-    products,
+    products: [],
     settings: {
       announcement: store.announcement,
       bankTransferEnabled: store.bank_transfer_enabled,
@@ -175,4 +155,23 @@ export const getPublicStorefront = cache(async (
     },
     slug: store.business_slug,
   }
+})
+
+// Product details remain a separate, single-product read.
+export const getPublicStorefront = cache(async (
+  slug: string,
+  preview: boolean,
+  productId: string,
+): Promise<PublicStorefront | null> => {
+  const supabase = await createClient()
+  const [store, result] = await Promise.all([
+    getPublicStorefrontInfo(slug, preview),
+    supabase.rpc("get_public_storefront_products", {
+      include_draft: preview,
+      selected_product_id: productId,
+      store_slug: slug,
+    }, { get: true }),
+  ])
+  if (result.error) throw new Error("Unable to load this product.", { cause: result.error })
+  return store ? { ...store, products: mapStorefrontProducts(result.data ?? []) } : null
 })

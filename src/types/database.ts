@@ -1193,6 +1193,23 @@ export type Database = {
           variants: Json
         }[]
       }
+      search_public_storefront_products: {
+        Args: {
+          store_slug: string
+          include_draft?: boolean
+          search_query?: string
+          selected_category_id?: string
+          result_limit?: number
+          result_offset?: number
+        }
+        Returns: {
+          products: Json
+          categories: Json
+          total_count: number
+          store_count: number
+          featured_count: number
+        }[]
+      }
       ingest_instagram_media: {
         Args: {
           confidence_payload?: Json

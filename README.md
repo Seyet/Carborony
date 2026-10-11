@@ -1,10 +1,9 @@
 # Carborony
 
-Production-ready foundation for an all-in-one business management and social
-commerce platform. This phase establishes the application architecture,
-authentication boundary, design system, responsive shell, and tenant-aware
-database foundation. The database now includes the commerce records required
-for dashboard aggregates; product-module interfaces remain placeholders.
+Business management and social commerce application with a merchant workspace,
+catalogue, inventory, orders, sales, reports, public storefronts, and Paystack
+checkout. Business data is scoped through Supabase authorization and PostgreSQL
+Row Level Security.
 
 ## Stack
 
@@ -67,8 +66,8 @@ business provisioning, business-owner membership automation, timestamp
 triggers, membership helper functions, indexes, and seed roles. The dashboard
 domain migration adds products, categories, inventory, customers, orders,
 sales, expenses, tenant-safe policies, and dashboard aggregate functions.
-Payment-provider integrations and outbound marketing automation remain
-deliberately deferred.
+Paystack payment setup and storefront checkout are implemented. Outbound
+marketing automation remains deferred.
 
 ## Signup flow
 
@@ -90,6 +89,7 @@ npm run dev        # development server
 npm run lint       # ESLint with zero warnings allowed
 npm run typecheck  # strict TypeScript check
 npm run check      # lint and typecheck
+npm test           # all tests, including local PostgreSQL regression tests
 npm run build      # optimized production build
 npm start          # run the production build
 ```
@@ -170,5 +170,36 @@ redirects, plus a verified server-side user check at the protected app boundary.
 Future data access and server actions must continue checking authorization close
 to the data source and must scope business-owned records by `business_id`.
 
-The future public storefront remains separate at `/store/[businessSlug]`; it is
-not implemented in this foundation phase.
+The public storefront lives at `/store/[slug]`, with product details, a cart,
+and checkout. Catalogue search and category filters run in PostgreSQL and return
+24 products per page. Card responses contain one thumbnail, a short description,
+and the variant pricing/stock needed by the grid; product pages load full details.
+Cart and metadata reads do not fetch the catalogue. Prices and availability are
+verified again during checkout.
+
+## Storefront optimization rollout
+
+Apply `20260921090000_paginate_public_storefront.sql` to the existing database
+**before deploying the updated application**. It adds a read-only RPC and keeps
+the existing product-detail RPC available. Published-store and authorized-preview
+visibility rules are preserved. No persistent cache of prices, stock, or private
+storefront previews is introduced.
+
+The image optimizer allows only the `product-media`, `storefront-media`, and
+`business-logos` public storage paths on `NEXT_PUBLIC_SUPABASE_URL`. Set that URL
+at build time. Local Supabase hosts remain subject to Next.js's default private-IP
+image-fetch restrictions; use hosted storage when verifying optimized images.
+
+## Automated verification
+
+`npm test` runs SQL regression tests using the pinned PGlite development
+dependency, without hosted database credentials. The SQL suites cover bounded
+catalogue pagination, search, preview visibility, payment settlement, inventory,
+and retrying reviewed payments after stock repair. Their minimal domain fixtures
+are not a replacement for testing all migrations and production RLS policies
+against a staging Supabase database.
+
+GitHub Actions runs lint, typechecking, all tests, and a production build. For
+performance comparisons, use the same catalogue and device/network conditions
+before and after deployment, and record image transfer sizes, storefront response
+sizes, page-load timings, and the catalogue RPC duration.
