@@ -203,3 +203,24 @@ GitHub Actions runs lint, typechecking, all tests, and a production build. For
 performance comparisons, use the same catalogue and device/network conditions
 before and after deployment, and record image transfer sizes, storefront response
 sizes, page-load timings, and the catalogue RPC duration.
+
+## Daily system health report
+
+Vercel Cron invokes `/api/cron/daily-system-health` daily at 00:00 UTC. The
+endpoint checks that the application runtime is executing, runs a read-only
+database query, checks the Supabase Auth Admin API and Storage API, and reports
+whether Paystack and Meta app credentials are configured. It emails the results
+to `hellocarborony@gmail.com` by default. Provider transaction health and
+per-merchant Instagram connections are outside these checks.
+
+Configure these server-only variables in Vercel:
+
+- `CRON_SECRET`: a long random value used to authorize scheduled requests.
+- `RESEND_API_KEY`: an API key from Resend.
+- `HEALTH_REPORT_FROM`: a sender address on a domain verified with Resend.
+- `HEALTH_REPORT_TO`: optional; defaults to `hellocarborony@gmail.com`.
+
+Vercel Cron uses UTC. Deploy the project with `vercel.json` and add the variables
+to the Production environment. The SQL `pg_cron` health query only runs inside
+Postgres; it does not send this report and does not prevent Supabase inactivity
+pauses.
