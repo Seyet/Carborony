@@ -115,7 +115,7 @@ export function MobileNavigation({ business }: { business: ShellBusiness }) {
               <div className="flex items-center gap-3 pr-8">
                 <AppLogo className="size-9" />
                 <span className="text-left">
-                  <SheetTitle>More from Carborony</SheetTitle>
+                  <SheetTitle>More from Noddar</SheetTitle>
                   <SheetDescription>
                     Navigate your workspace or start a quick action.
                   </SheetDescription>

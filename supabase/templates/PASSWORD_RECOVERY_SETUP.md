@@ -6,7 +6,7 @@ The app uses this flow: `/forgot-password` → email code verification →
 ## Hosted Supabase
 
 1. Open **Authentication → Email Templates → Reset Password**.
-2. Set the subject to `Reset your Carborony password`.
+2. Set the subject to `Reset your Noddar password`.
 3. Paste `password-recovery.html` into the body and save.
 4. Ensure the email OTP length is between 6 and 8 digits; the form accepts
    those lengths. Supabase controls expiry and rate limits.
@@ -26,7 +26,7 @@ For local Supabase, merge this section into your existing `supabase/config.toml`
 
 ```toml
 [auth.email.template.recovery]
-subject = "Reset your Carborony password"
+subject = "Reset your Noddar password"
 content_path = "./supabase/templates/password-recovery.html"
 ```
 

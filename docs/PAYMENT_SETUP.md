@@ -18,7 +18,7 @@ changing an order status does not issue a refund.
 2. Set `PAYSTACK_SECRET_KEY` on the server. Start with an `sk_test_...` key from
    your Paystack integration. Never use a `NEXT_PUBLIC_` variable for this key.
 3. Set `PAYSTACK_PLATFORM_COMMISSION_PERCENT=0`, or the agreed platform percentage
-   from 0 through 100 with up to two decimal places. This is Carborony's share,
+   from 0 through 100 with up to two decimal places. This is Noddar's share,
    not Paystack's transaction fee. The owner must confirm the displayed rate.
 4. Ensure `SUPABASE_SECRET_KEY` (or `SUPABASE_SERVICE_ROLE_KEY`) is configured for
    the server. Browser sessions have owner-scoped read access only to payout rows.
@@ -43,7 +43,7 @@ application leaves the setup pending for support review; it must not create a
 second account just because a listing returned no match.
 
 Support can use the server-only `operation_id` to locate the description
-`Carborony setup <operation_id>` in Paystack. Confirm the original request has
+`Noddar setup <operation_id>` in Paystack. Confirm the original request has
 finished, check the integration and mode, and reconcile the matching record. Only
 clear an unresolved reservation after confirming there is no provider subaccount.
 A definitive 400/422 rejection releases the reservation automatically.

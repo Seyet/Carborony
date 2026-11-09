@@ -18,12 +18,12 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "Carborony",
-    template: "%s · Carborony",
+    default: "Noddar",
+    template: "%s · Noddar",
   },
   description:
     "One place to run your business, understand performance, and grow every sales channel.",
-  applicationName: "Carborony",
+  applicationName: "Noddar",
   icons: {
     icon: [{ url: "/logo.svg", type: "image/svg+xml" }],
     shortcut: "/logo.svg",

@@ -1,4 +1,4 @@
-# Carborony
+# Noddar
 
 Business management and social commerce application with a merchant workspace,
 catalogue, inventory, orders, sales, reports, public storefronts, and Paystack
@@ -43,7 +43,7 @@ credentials, the public authentication screens remain previewable and protected
    token in the message body, for example:
 
    ```html
-   <h2>Verify your Carborony account</h2>
+   <h2>Verify your Noddar account</h2>
    <p>Your verification code is:</p>
    <p style="font-size: 28px; font-weight: 700; letter-spacing: 6px;">
      {{ .Token }}

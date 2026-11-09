@@ -2,7 +2,7 @@
 
 Login now requires email + password, then a 6–8 digit email code. Password checks use an isolated server client; the browser receives session cookies only after code verification. The verification endpoint checks the password again. Passwords stay in component memory and are never stored in browser storage.
 
-In hosted Supabase, open Authentication → Email Templates → Magic Link and install `staff-magic-link.html`. This shared template contains `{{ .Token }}` for login and retains the staff invitation link. Set a general subject such as “Your Carborony sign-in code”. Keep the OTP length between 6 and 8 digits. The Reset Password template is separate.
+In hosted Supabase, open Authentication → Email Templates → Magic Link and install `staff-magic-link.html`. This shared template contains `{{ .Token }}` for login and retains the staff invitation link. Set a general subject such as “Your Noddar sign-in code”. Keep the OTP length between 6 and 8 digits. The Reset Password template is separate.
 
 The application uses `signInWithOtp` with `shouldCreateUser: false`, and `verifyOtp` with type `email`. Resend repeats the password check and has a 60-second UI cooldown; Supabase enforces provider rate limits and expiry.
 

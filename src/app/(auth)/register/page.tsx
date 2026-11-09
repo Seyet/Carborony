@@ -5,7 +5,7 @@ import { AuthCard } from "@/features/auth/components/auth-card"
 import { RegisterForm } from "@/features/auth/components/register-form"
 
 export const metadata: Metadata = {
-  description: "Create your Carborony account.",
+  description: "Create your Noddar account.",
   title: "Create account",
 }
 

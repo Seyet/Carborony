@@ -11,7 +11,7 @@ import { isSupabaseConfigured } from "@/lib/supabase/env"
 import { createClient } from "@/lib/supabase/server"
 
 export const metadata: Metadata = {
-  description: "Choose a new password for your Carborony account.",
+  description: "Choose a new password for your Noddar account.",
   title: "Choose a new password",
 }
 

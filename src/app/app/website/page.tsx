@@ -6,7 +6,7 @@ import { StorefrontSetupRequiredError, getStorefrontAdminData } from "@/features
 import { StorefrontOverview } from "@/features/storefront/storefront-overview"
 
 export const metadata: Metadata = {
-  description: "Build and manage your Carborony online storefront.",
+  description: "Build and manage your Noddar online storefront.",
   title: "My Website",
 }
 

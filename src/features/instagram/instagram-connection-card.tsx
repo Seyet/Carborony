@@ -51,7 +51,7 @@ function formatDate(value: string | null) {
 
 function connectionMessage(status: InstagramConnection["status"]) {
   if (status === "expired") return "The access token has expired. Reconnect to resume imports."
-  if (status === "needs_reauthorization") return "Instagram needs your approval again before Carborony can sync."
+  if (status === "needs_reauthorization") return "Instagram needs your approval again before Noddar can sync."
   if (status === "error") return "We could not verify this connection. Try reconnecting the account."
   return null
 }
@@ -219,7 +219,7 @@ export function InstagramConnectionCard({
             <div>
               <p className="font-medium">{requiresAttention ? "Reconnect to continue" : "Ready when your business is"}</p>
               <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                {warning ?? "Connect an Instagram Business or Creator account. Carborony only reads eligible media you authorize."}
+                {warning ?? "Connect an Instagram Business or Creator account. Noddar only reads eligible media you authorize."}
               </p>
             </div>
           </div>
@@ -238,7 +238,7 @@ export function InstagramConnectionCard({
           </span>
           <DialogTitle>Disconnect Instagram?</DialogTitle>
           <DialogDescription>
-            Disconnect {connection.username ? `@${connection.username}` : "your Instagram account"} from Carborony?
+            Disconnect {connection.username ? `@${connection.username}` : "your Instagram account"} from Noddar?
             {" "}Post imports will stop until you reconnect. Your existing catalogue products and import drafts will be kept.
           </DialogDescription>
         </DialogHeader>

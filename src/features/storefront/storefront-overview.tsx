@@ -328,7 +328,7 @@ export function StorefrontOverview({ data }: { data: StorefrontAdminData }) {
       </Tabs>
 
       {!data.canManage ? <div className="rounded-xl border bg-muted/30 p-4 text-sm text-muted-foreground">You have read-only access to this storefront. Ask an owner or administrator to make changes.</div> : null}
-      <div className="flex items-start gap-3 rounded-xl border border-dashed p-4 text-sm text-muted-foreground"><CheckCircle2 aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-emerald-600" /><p>Catalogue prices, availability, customers, and orders remain connected to the rest of Carborony. Storefront orders appear automatically in Orders.</p></div>
+      <div className="flex items-start gap-3 rounded-xl border border-dashed p-4 text-sm text-muted-foreground"><CheckCircle2 aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-emerald-600" /><p>Catalogue prices, availability, customers, and orders remain connected to the rest of Noddar. Storefront orders appear automatically in Orders.</p></div>
     </div>
   )
 }

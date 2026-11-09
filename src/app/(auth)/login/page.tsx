@@ -6,7 +6,7 @@ import { LoginForm } from "@/features/auth/components/login-form"
 import { getSafeNextPath } from "@/lib/auth/redirect"
 
 export const metadata: Metadata = {
-  description: "Sign in to your Carborony business workspace.",
+  description: "Sign in to your Noddar business workspace.",
   title: "Sign in",
 }
 
@@ -29,7 +29,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
       description="Enter your details to continue to your business workspace."
       footer={
         <>
-          New to Carborony?{" "}
+          New to Noddar?{" "}
           <Link
             className="font-medium text-foreground underline-offset-4 hover:underline"
             href="/register"

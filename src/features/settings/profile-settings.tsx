@@ -91,7 +91,7 @@ export function ProfileSettings({ data }: { data: SettingsPageData }) {
   return (
     <div className="grid gap-5 xl:grid-cols-2">
       <Card className="xl:col-span-2">
-        <CardHeader><CardTitle as="h2">Personal profile</CardTitle><CardDescription>Your identity in Carborony and across your business workspaces.</CardDescription></CardHeader>
+        <CardHeader><CardTitle as="h2">Personal profile</CardTitle><CardDescription>Your identity in Noddar and across your business workspaces.</CardDescription></CardHeader>
         <CardContent>
           <form className="grid gap-5" onSubmit={saveProfile}>
             <SettingsImagePicker disabled={Boolean(pending)} initialUrl={avatarUrl} label="Profile photo" onChange={(avatar, previewUrl) => { setProfile((current) => ({ ...current, avatar })); setAvatarUrl(previewUrl) }} round />

@@ -59,7 +59,7 @@ export function LogoutConfirmationDialog({
           <span className="mb-1 flex size-10 items-center justify-center rounded-full bg-destructive/10 text-destructive">
             <LogOut className="size-5" aria-hidden="true" />
           </span>
-          <DialogTitle>Sign out of Carborony?</DialogTitle>
+          <DialogTitle>Sign out of Noddar?</DialogTitle>
           <DialogDescription>
             You’ll need to sign in again to access {businessName} on this
             device.

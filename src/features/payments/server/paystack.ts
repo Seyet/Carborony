@@ -130,7 +130,7 @@ export async function createPaymentSubaccount(input: {
     bank_code: input.bankCode,
     account_number: input.accountNumber,
     percentage_charge: input.commissionPercent,
-    description: `Carborony setup ${input.operationId}`,
+    description: `Noddar setup ${input.operationId}`,
     metadata: JSON.stringify({ carborony_business_id: input.businessId, carborony_operation_id: input.operationId }),
   }))
 }
@@ -140,7 +140,8 @@ export async function findPaymentSubaccount(operationId: string) {
   for (let page = 1; page <= 10; page++) {
     const rows = z.array(z.unknown()).parse(await request(`/subaccount?perPage=100&page=${page}`))
     const matches = rows.filter((row) => typeof row === "object" && row !== null
-      && "description" in row && row.description === `Carborony setup ${operationId}`)
+      && "description" in row
+      && (row.description === `Noddar setup ${operationId}` || row.description === `Carborony setup ${operationId}`))
     if (matches.length > 1) throw new ApiError(409, "PAYMENT_REVIEW_REQUIRED", "Payment setup needs support review before continuing.")
     if (matches.length === 1) return subaccountSchema.parse(matches[0])
     if (rows.length < 100) return null

@@ -100,8 +100,8 @@ export async function generateTransactionPdf(data: TransactionDocumentData) {
 
   pdf.setTitle(fileTitle)
   pdf.setAuthor(data.business.name)
-  pdf.setCreator("Carborony")
-  pdf.setProducer("Carborony")
+  pdf.setCreator("Noddar")
+  pdf.setProducer("Noddar")
   pdf.setSubject(`${documentTitle} for ${formatAmount(data.currencyCode, data.totalAmount, data.formatting.locale)}`)
 
   let page = pdf.addPage(PageSizes.A4)
@@ -136,7 +136,7 @@ export async function generateTransactionPdf(data: TransactionDocumentData) {
     x: pageMargin,
     y,
   })
-  page.drawText("Powered by Carborony", {
+  page.drawText("Powered by Noddar", {
     color: mutedColor,
     font: regular,
     size: 8,
@@ -351,7 +351,7 @@ export async function generateTransactionPdf(data: TransactionDocumentData) {
       start: { x: pageMargin, y: footerY + 12 },
       thickness: 0.6,
     })
-    pdfPage.drawText("Generated securely by Carborony", {
+    pdfPage.drawText("Generated securely by Noddar", {
       color: mutedColor,
       font: regular,
       size: 7,

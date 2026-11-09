@@ -21,7 +21,7 @@ export function InstagramSettings({
     invalid_state: "The Instagram connection request expired or was already used. Start a new connection from this page.",
     missing_code: "Instagram did not return an authorization code. Start the connection again.",
     profile_lookup_failed: "The access token was created, but Instagram account details could not be read. Confirm the account is a professional account and has access to this unpublished app.",
-    save_failed: "Instagram authorized the connection, but Carborony could not save it. Confirm the latest database migration has been applied.",
+    save_failed: "Instagram authorized the connection, but Noddar could not save it. Confirm the latest database migration has been applied.",
     server_configuration_failed: "Instagram authorized the connection, but the deployment encryption or server credentials are invalid.",
     token_exchange_failed: "Meta rejected the long-lived token exchange. Confirm the Instagram app secret belongs to the Instagram app ID configured in Vercel.",
   }
@@ -80,7 +80,7 @@ export function InstagramSettings({
       <Card>
         <CardHeader>
           <CardTitle as="h2">How imports work</CardTitle>
-          <CardDescription>Carborony reads only the professional-account media you approve through Meta.</CardDescription>
+          <CardDescription>Noddar reads only the professional-account media you approve through Meta.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3 sm:grid-cols-3">
           {[

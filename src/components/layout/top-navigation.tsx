@@ -316,11 +316,11 @@ export function TopNavigation({
         <Link
           href="/app/dashboard"
           className="mr-auto flex shrink-0 items-center gap-2 lg:hidden"
-          aria-label="Carborony dashboard"
+          aria-label="Noddar dashboard"
         >
           <AppLogo className="size-8" />
           <span className="hidden font-semibold tracking-tight sm:block md:hidden">
-            Carborony
+            Noddar
           </span>
         </Link>
 

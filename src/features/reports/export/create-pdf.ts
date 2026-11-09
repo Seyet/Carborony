@@ -234,8 +234,8 @@ export async function createReportPdf(document: ReportExportDocument) {
 
   pdf.setTitle(document.title)
   pdf.setAuthor(document.businessName)
-  pdf.setCreator("Carborony")
-  pdf.setProducer("Carborony")
+  pdf.setCreator("Noddar")
+  pdf.setProducer("Noddar")
   pdf.setSubject(`${document.title} for ${document.businessName}`)
 
   const addPage = () => {
@@ -265,7 +265,7 @@ export async function createReportPdf(document: ReportExportDocument) {
     x: pageMargin,
     y,
   })
-  page.drawText("Powered by Carborony", {
+  page.drawText("Powered by Noddar", {
     color: mutedColor,
     font: regular,
     size: 7.5,

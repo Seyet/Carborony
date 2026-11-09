@@ -37,7 +37,7 @@ export function AppSidebar({ business }: { business: ShellBusiness }) {
         <AppLogo className="size-9" />
         <span className="min-w-0">
           <span className="block truncate text-base font-semibold tracking-tight">
-            Carborony
+            Noddar
           </span>
           <span className="block text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
             Business OS

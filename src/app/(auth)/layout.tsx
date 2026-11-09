@@ -8,7 +8,7 @@ import { AppLogo } from "@/components/common/app-logo"
 export const metadata: Metadata = {
   title: {
     default: "Account",
-    template: "%s | Carborony",
+    template: "%s | Noddar",
   },
 }
 
@@ -25,7 +25,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
           href="/"
         >
           <AppLogo className="size-10" />
-          <span className="text-xl">Carborony</span>
+          <span className="text-xl">Noddar</span>
         </Link>
 
         <div className="relative z-10 my-auto max-w-lg py-20">
@@ -62,7 +62,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
           href="/"
         >
           <AppLogo className="size-9" />
-          Carborony
+          Noddar
         </Link>
         <div className="flex flex-1 items-center justify-center py-8">
           {children}

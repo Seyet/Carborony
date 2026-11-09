@@ -205,7 +205,7 @@ export function InvitationAcceptance({
               </>
             ) : (
               <p className="rounded-lg border border-primary/20 bg-primary/5 p-3 text-xs leading-5 text-muted-foreground">
-                Your existing Carborony password stays unchanged. This invitation only adds access to this business.
+                Your existing Noddar password stays unchanged. This invitation only adds access to this business.
               </p>
             )}
             <SubmitButton disabled={!validation.success} pending={pending}>

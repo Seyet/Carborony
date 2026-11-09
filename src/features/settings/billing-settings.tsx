@@ -92,7 +92,7 @@ export function BillingSettings({ data, billing }: { data: SettingsPageData; bil
       <Card className="bg-foreground text-background ring-0 xl:col-span-2">
         <CardHeader>
           <div className="flex flex-wrap items-start justify-between gap-3">
-            <div><CardTitle as="h2" className="text-lg">{planName(billing.planCode)} plan</CardTitle><CardDescription className="mt-1 text-background/65">Your current Carborony workspace subscription.</CardDescription></div>
+            <div><CardTitle as="h2" className="text-lg">{planName(billing.planCode)} plan</CardTitle><CardDescription className="mt-1 text-background/65">Your current Noddar workspace subscription.</CardDescription></div>
             <Badge className={cn("border-0", status.className)} variant="secondary">{status.label}</Badge>
           </div>
         </CardHeader>

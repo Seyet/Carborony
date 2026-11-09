@@ -1,16 +1,16 @@
 # Staff invitation email setup
 
 The staff flow uses two Supabase Auth templates because it supports both new
-employees and employees who already have a Carborony account.
+employees and employees who already have a Noddar account.
 
 ## Hosted Supabase project
 
 1. Open **Authentication → Email Templates** in the Supabase dashboard.
 2. Select **Invite user**.
-3. Set the subject to `You’re invited to {{ .Data.business_name }} on Carborony`.
+3. Set the subject to `You’re invited to {{ .Data.business_name }} on Noddar`.
 4. Paste the complete contents of `staff-invite.html` into the message body and save.
 5. Select **Magic Link**.
-6. Set the subject to `Review your Carborony staff invitation`.
+6. Set the subject to `Review your Noddar staff invitation`.
 7. Paste the complete contents of `staff-magic-link.html` into the message body and save.
 8. Open **Authentication → URL Configuration**.
 9. Set the production **Site URL** and add these redirect URLs:

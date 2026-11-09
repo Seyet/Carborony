@@ -12,7 +12,7 @@ import {
 import { getMyStaffInvitation } from "@/features/staff/server/get-staff"
 
 export const metadata: Metadata = {
-  description: "Review and accept your Carborony staff invitation.",
+  description: "Review and accept your Noddar staff invitation.",
   title: "Accept staff invitation",
 }
 

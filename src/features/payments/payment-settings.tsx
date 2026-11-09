@@ -118,7 +118,7 @@ export function PaymentSettings() {
           <p className="text-sm text-muted-foreground">{account.status === "connected"
             ? "Your payout destination is saved. Online checkout is available when this account is active and payment configuration is complete. Contact support if you need to change this account."
             : "We’re confirming your account setup with Paystack. Check the status before trying again. If it stays pending, contact support."}</p>
-          <p className="text-sm text-muted-foreground">Carborony platform fee: {account.commissionPercent}%. Payment provider fees apply separately.</p>
+          <p className="text-sm text-muted-foreground">Noddar platform fee: {account.commissionPercent}%. Payment provider fees apply separately.</p>
           <Button disabled={Boolean(pending)} onClick={refreshStatus} variant="outline">{pending === "refresh" ? <LoaderCircle aria-hidden="true" className="animate-spin" /> : <RefreshCw aria-hidden="true" />}Check setup status</Button>
         </div> : <form className="grid max-w-lg gap-5" onSubmit={verify}>
           <label className="grid gap-2 text-sm font-medium" htmlFor="payout-bank">Bank
@@ -130,7 +130,7 @@ export function PaymentSettings() {
           <label className="grid gap-2 text-sm font-medium" htmlFor="payout-account">Account number
             <Input id="payout-account" autoComplete="off" inputMode="numeric" maxLength={10} pattern="[0-9]{10}" placeholder="10-digit account number" required disabled={Boolean(pending)} value={accountNumber} onChange={(event) => { setAccountNumber(event.target.value.replace(/\D/g, "")); setVerified(null) }} />
           </label>
-          <p className="text-sm leading-6 text-muted-foreground">Carborony platform fee: <strong>{setup.commissionPercent}%</strong>. Payment provider fees apply separately. You’ll review the bank account name before saving.</p>
+          <p className="text-sm leading-6 text-muted-foreground">Noddar platform fee: <strong>{setup.commissionPercent}%</strong>. Payment provider fees apply separately. You’ll review the bank account name before saving.</p>
           <Button className="justify-self-start" disabled={Boolean(pending) || !bankCode || accountNumber.length !== 10} type="submit">{pending === "resolve" ? <LoaderCircle aria-hidden="true" className="animate-spin" /> : <ShieldCheck aria-hidden="true" />}Verify bank account</Button>
         </form>}
       </CardContent>

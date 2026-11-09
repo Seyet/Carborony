@@ -25,11 +25,11 @@ async function sendReport(checks: Check[], timestamp: string) {
   if (!apiKey || !sender) throw new Error("Set RESEND_API_KEY and HEALTH_REPORT_FROM to enable email reports.")
 
   const failed = checks.filter((check) => check.status === "unhealthy")
-  const subject = `${failed.length ? "ALERT" : "OK"}: Carborony system health — ${timestamp.slice(0, 10)}`
+  const subject = `${failed.length ? "ALERT" : "OK"}: Noddar system health — ${timestamp.slice(0, 10)}`
   const rows = checks.map((check) =>
     `<tr><td style="padding:8px;border-bottom:1px solid #eee">${escapeHtml(check.name)}</td><td style="padding:8px;border-bottom:1px solid #eee">${escapeHtml(check.status.toUpperCase())}</td><td style="padding:8px;border-bottom:1px solid #eee">${escapeHtml(check.detail)}</td></tr>`,
   ).join("")
-  const html = `<h2>Carborony daily system health report</h2><p>Checked at ${escapeHtml(timestamp)} UTC. Overall status: <strong>${failed.length ? "ATTENTION REQUIRED" : "HEALTHY"}</strong>.</p><table style="border-collapse:collapse;text-align:left"><thead><tr><th style="padding:8px">System</th><th style="padding:8px">Status</th><th style="padding:8px">Details</th></tr></thead><tbody>${rows}</tbody></table>`
+  const html = `<h2>Noddar daily system health report</h2><p>Checked at ${escapeHtml(timestamp)} UTC. Overall status: <strong>${failed.length ? "ATTENTION REQUIRED" : "HEALTHY"}</strong>.</p><table style="border-collapse:collapse;text-align:left"><thead><tr><th style="padding:8px">System</th><th style="padding:8px">Status</th><th style="padding:8px">Details</th></tr></thead><tbody>${rows}</tbody></table>`
   const response = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },

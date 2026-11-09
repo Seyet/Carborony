@@ -149,7 +149,7 @@ export async function exportDashboardOverview(
   }
 
   const rows: CsvCell[][] = [
-    ["Carborony dashboard overview"],
+    ["Noddar dashboard overview"],
     ["Business", business.name],
     ["Currency", settings.currency_code],
     ["Timezone", settings.timezone],

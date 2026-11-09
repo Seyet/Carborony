@@ -18,7 +18,7 @@ import { requireUser } from "@/lib/auth/session"
 
 export const metadata: Metadata = {
   description: "Create your business workspace.",
-  title: "Set up your business | Carborony",
+  title: "Set up your business | Noddar",
 }
 
 export default async function BusinessOnboardingPage() {
@@ -58,7 +58,7 @@ export default async function BusinessOnboardingPage() {
       <header className="border-b bg-background">
         <div className="mx-auto flex h-16 max-w-5xl items-center gap-3 px-4 sm:px-6">
           <AppLogo className="size-9" />
-          <span className="font-semibold">Carborony</span>
+          <span className="font-semibold">Noddar</span>
           <span className="ml-auto text-sm text-muted-foreground">Business setup</span>
         </div>
       </header>

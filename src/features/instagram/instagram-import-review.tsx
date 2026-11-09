@@ -223,7 +223,7 @@ export function InstagramImportReview({ data }: { data: InstagramImportReviewDat
         <ShieldCheck aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-emerald-700 dark:text-emerald-400" />
         <div>
           <p className="font-medium">You stay in control</p>
-          <p className="mt-1 leading-6 text-muted-foreground">Caption rules only provide suggestions. Carborony will not create or publish a product until you explicitly approve it below.</p>
+          <p className="mt-1 leading-6 text-muted-foreground">Caption rules only provide suggestions. Noddar will not create or publish a product until you explicitly approve it below.</p>
         </div>
       </div>
 
