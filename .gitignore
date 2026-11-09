@@ -69,3 +69,5 @@ supabase/migrations/*
 !supabase/migrations/20261109000000_dashboard_all_sales_channels.sql
 
 !supabase/migrations/20261109010000_tenant_rpc_execution_hardening.sql
+
+!supabase/migrations/20261109020000_user_module_tutorials.sql

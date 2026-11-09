@@ -519,6 +519,12 @@ type StorefrontCheckoutRow = {
 export type Database = {
   public: {
     Tables: {
+      user_tutorial_preferences: DomainTable<
+        { user_id: string; automatic: boolean }, "user_id"
+      >
+      user_module_tutorials: DomainTable<
+        { user_id: string; module_id: string; status: string }, "user_id" | "module_id" | "status"
+      >
       activity_logs: DomainTable<
         ActivityLogRow,
         "action" | "actor_name" | "business_id" | "entity_type",
