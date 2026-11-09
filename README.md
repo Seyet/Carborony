@@ -15,7 +15,12 @@ Row Level Security.
 
 ## Local setup
 
+Use Node.js 26 LTS. The version is pinned in `.nvmrc` for local development and CI,
+and in `package.json` for Vercel builds and functions.
+
 ```bash
+nvm install
+nvm use
 npm install
 cp .env.example .env.local
 npm run dev
