@@ -112,14 +112,14 @@ export async function exportDashboardOverview(
   const [metricsResult, overviewResult, productsResult, transactionsResult] =
     await Promise.all([
       supabase
-        .rpc("get_dashboard_metrics", argumentsForRange)
+        .rpc("get_dashboard_metrics_all_channels", argumentsForRange)
         .single(),
-      supabase.rpc("get_dashboard_sales_overview", argumentsForRange),
-      supabase.rpc("get_dashboard_top_products", {
+      supabase.rpc("get_dashboard_sales_overview_all_channels", argumentsForRange),
+      supabase.rpc("get_dashboard_top_products_all_channels", {
         ...argumentsForRange,
         result_limit: 10,
       }),
-      supabase.rpc("get_dashboard_recent_transactions", {
+      supabase.rpc("get_dashboard_recent_transactions_all_channels", {
         ...argumentsForRange,
         result_limit: 100,
       }),

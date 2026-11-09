@@ -64,3 +64,5 @@ supabase/migrations/*
 !supabase/migrations/20260823153000_fix_negative_inventory_movements.sql
 !supabase/migrations/20260823164000_completed_order_inventory.sql
 !supabase/migrations/20260824000000_paid_invoice_inventory.sql
+
+!supabase/migrations/20261109000000_dashboard_all_sales_channels.sql

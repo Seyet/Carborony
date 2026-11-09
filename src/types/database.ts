@@ -1640,6 +1640,24 @@ export type Database = {
           sales_total: number
         }[]
       }
+      get_dashboard_metrics_all_channels: {
+        Args: {
+          range_end: string
+          range_start: string
+          target_business_id: string
+        }
+        Returns: {
+          customers_count: number
+          expenses_total: number
+          low_stock_count: number
+          orders_count: number
+          out_of_stock_count: number
+          pending_orders_count: number
+          products_count: number
+          profit_total: number
+          sales_total: number
+        }[]
+      }
       get_expense_metrics: {
         Args: { target_business_id: string }
         Returns: {
@@ -2186,6 +2204,23 @@ export type Database = {
           total_amount: number
         }[]
       }
+      get_dashboard_recent_transactions_all_channels: {
+        Args: {
+          range_end: string
+          range_start: string
+          result_limit?: number
+          target_business_id: string
+        }
+        Returns: {
+          channel: string
+          customer_name: string
+          sale_id: string
+          sale_number: string
+          sold_at: string
+          status: string
+          total_amount: number
+        }[]
+      }
       get_dashboard_sales_overview: {
         Args: {
           range_end: string
@@ -2198,7 +2233,34 @@ export type Database = {
           transaction_count: number
         }[]
       }
+      get_dashboard_sales_overview_all_channels: {
+        Args: {
+          range_end: string
+          range_start: string
+          target_business_id: string
+        }
+        Returns: {
+          period_date: string
+          sales_total: number
+          transaction_count: number
+        }[]
+      }
       get_dashboard_top_products: {
+        Args: {
+          range_end: string
+          range_start: string
+          result_limit?: number
+          target_business_id: string
+        }
+        Returns: {
+          category_name: string | null
+          product_id: string
+          product_name: string
+          revenue: number
+          units_sold: number
+        }[]
+      }
+      get_dashboard_top_products_all_channels: {
         Args: {
           range_end: string
           range_start: string

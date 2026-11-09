@@ -201,6 +201,16 @@ export function MobileNavigation({ business }: { business: ShellBusiness }) {
                     const Icon = item.icon
                     const isActive = pathname === item.href
 
+                    if (item.comingSoon) {
+                      return (
+                        <div key={item.href} aria-disabled="true" className="flex flex-wrap items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-muted-foreground">
+                          <Icon className="size-4 shrink-0" aria-hidden="true" />
+                          <span>{item.title}</span>
+                          <Badge variant="secondary" className="text-[10px]">Coming soon</Badge>
+                        </div>
+                      )
+                    }
+
                     return (
                       <Link
                         key={item.href}

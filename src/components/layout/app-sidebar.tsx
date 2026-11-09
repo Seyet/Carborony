@@ -79,16 +79,36 @@ export function AppSidebar({ business }: { business: ShellBusiness }) {
             const isActive = isNavigationItemActive(pathname, item.href)
             const hasChildren = Boolean(item.children?.length)
             const showChildren =
-              hasChildren && (marketingIsOpen || marketingIsActive)
+              hasChildren && marketingIsOpen
 
             return (
               <li key={item.href}>
-                <div className="flex items-center gap-1">
+                {hasChildren ? (
+                  <button
+                    type="button"
+                    onClick={() => setMarketingIsOpen((value) => !value)}
+                    aria-expanded={showChildren}
+                    aria-controls="sidebar-social-media-tools"
+                    className={cn(
+                      "group flex h-9 w-full items-center gap-3 rounded-lg px-2.5 text-left text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring",
+                      isActive
+                        ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-xs"
+                        : "text-sidebar-foreground/72 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                    )}
+                  >
+                    <Icon className="size-4 shrink-0" aria-hidden="true" />
+                    <span className="min-w-0 flex-1 truncate">{item.title}</span>
+                    <ChevronDown
+                      className={cn("size-4 shrink-0 transition-transform", showChildren && "rotate-180")}
+                      aria-hidden="true"
+                    />
+                  </button>
+                ) : (
                   <Link
                     href={item.href}
                     aria-current={pathname === item.href ? "page" : undefined}
                     className={cn(
-                      "group flex h-9 min-w-0 flex-1 items-center gap-3 rounded-lg px-2.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring",
+                      "group flex h-9 min-w-0 items-center gap-3 rounded-lg px-2.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring",
                       isActive
                         ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-xs"
                         : "text-sidebar-foreground/72 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
@@ -97,44 +117,29 @@ export function AppSidebar({ business }: { business: ShellBusiness }) {
                     <Icon
                       className={cn(
                         "size-4 shrink-0",
-                        !isActive &&
-                          "text-muted-foreground group-hover:text-sidebar-accent-foreground"
+                        !isActive && "text-muted-foreground group-hover:text-sidebar-accent-foreground"
                       )}
                       aria-hidden="true"
                     />
                     <span className="truncate">{item.title}</span>
                   </Link>
-                  {hasChildren ? (
-                    <button
-                      type="button"
-                      onClick={() => setMarketingIsOpen((value) => !value)}
-                      aria-label={
-                        showChildren
-                          ? "Collapse social media tools navigation"
-                          : "Expand social media tools navigation"
-                      }
-                      aria-expanded={showChildren}
-                      className="flex size-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
-                    >
-                      <ChevronDown
-                        className={cn(
-                          "size-4 transition-transform",
-                          showChildren && "rotate-180"
-                        )}
-                        aria-hidden="true"
-                      />
-                    </button>
-                  ) : null}
-                </div>
+                )}
 
-                {showChildren && item.children ? (
-                  <ul className="ml-4 mt-1 space-y-1 border-l border-sidebar-border pl-3">
+                {item.children ? (
+                  <ul id="sidebar-social-media-tools" hidden={!showChildren} className="ml-4 mt-1 space-y-1 border-l border-sidebar-border pl-3">
                     {item.children.map((child) => {
                       const ChildIcon = child.icon
-                      const childIsActive = pathname === child.href
+                      const childIsActive = isNavigationItemActive(pathname, child.href)
 
                       return (
                         <li key={child.href}>
+                          {child.comingSoon ? (
+                            <span aria-disabled="true" className="flex min-h-8 items-center gap-2 rounded-md px-2 text-xs text-muted-foreground">
+                              <ChildIcon className="size-3.5 shrink-0" aria-hidden="true" />
+                              <span className="flex-1">{child.title}</span>
+                              <Badge variant="secondary" className="shrink-0 px-1.5 text-[9px]">Coming soon</Badge>
+                            </span>
+                          ) : (
                           <Link
                             href={child.href}
                             aria-current={childIsActive ? "page" : undefined}
@@ -148,6 +153,7 @@ export function AppSidebar({ business }: { business: ShellBusiness }) {
                             <ChildIcon className="size-3.5" aria-hidden="true" />
                             {child.title}
                           </Link>
+                          )}
                         </li>
                       )
                     })}

@@ -19,6 +19,7 @@ import {
 } from "lucide-react"
 
 export type NavigationChild = {
+  comingSoon?: boolean
   title: string
   href: string
   icon: LucideIcon
@@ -34,21 +35,25 @@ export type NavigationItem = {
 
 export const marketingNavigation = [
   {
+    comingSoon: false,
     title: "Instagram",
     href: "/app/marketing/instagram",
     icon: Camera,
   },
   {
+    comingSoon: true,
     title: "Social Posts",
     href: "/app/marketing/social-posts",
     icon: Radio,
   },
   {
+    comingSoon: true,
     title: "Campaigns",
     href: "/app/marketing/campaigns",
     icon: Megaphone,
   },
   {
+    comingSoon: true,
     title: "AI Content",
     href: "/app/marketing/ai-content",
     icon: Sparkles,

@@ -81,11 +81,11 @@ export async function getDashboardData(startDate: string, endDate: string): Prom
   const previousRangeArgs = { range_end: previous.end, range_start: previous.start, target_business_id: business.id }
   const [settingsResult, metricsResult, previousMetricsResult, overviewResult, productsResult, transactionsResult] = await Promise.all([
     supabase.from("businesses").select("currency_code, locale, time_format, timezone").eq("id", business.id).single(),
-    supabase.rpc("get_dashboard_metrics", currentRange).single(),
-    supabase.rpc("get_dashboard_metrics", previousRangeArgs).single(),
-    supabase.rpc("get_dashboard_sales_overview", currentRange),
-    supabase.rpc("get_dashboard_top_products", { ...currentRange, result_limit: 5 }),
-    supabase.rpc("get_dashboard_recent_transactions", { ...currentRange, result_limit: 10 }),
+    supabase.rpc("get_dashboard_metrics_all_channels", currentRange).single(),
+    supabase.rpc("get_dashboard_metrics_all_channels", previousRangeArgs).single(),
+    supabase.rpc("get_dashboard_sales_overview_all_channels", currentRange),
+    supabase.rpc("get_dashboard_top_products_all_channels", { ...currentRange, result_limit: 5 }),
+    supabase.rpc("get_dashboard_recent_transactions_all_channels", { ...currentRange, result_limit: 10 }),
   ])
   const firstError = [settingsResult, metricsResult, previousMetricsResult, overviewResult, productsResult, transactionsResult]
     .find((result) => result.error)?.error
