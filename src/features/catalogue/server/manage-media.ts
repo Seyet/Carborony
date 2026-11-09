@@ -15,6 +15,9 @@ async function getMediaActor() {
   const user = await getCurrentUser()
   if (!user) throw new ApiError(401, "AUTH_REQUIRED", "Sign in to manage product media.")
   const business = await getCurrentBusiness()
+  if (!business.permissions.includes("products.manage")) {
+    throw new ApiError(403, "MEDIA_FORBIDDEN", "You do not have permission to manage product media.")
+  }
   const supabase = await createClient()
 
   return { business, supabase, user }
@@ -85,7 +88,7 @@ export async function finalizeMediaUploads(
   productId: string,
   input: MediaFinalizeBatchInput,
 ): Promise<JsonHandlerResult<MediaMutationData>> {
-  const { business, supabase, user } = await getMediaActor()
+  const { business, supabase, user } = await requireProduct(productId)
   const requiredPrefix = `${user.id}/${business.id}/${productId}/`
   const storageFileNames = input.items.map((item) => {
     if (!item.storagePath.startsWith(requiredPrefix)) {
@@ -151,12 +154,6 @@ export async function finalizeMediaUploads(
   if (primaryResult?.error) {
     throw new ApiError(503, "MEDIA_SAVE_FAILED", "We couldn't save this product media.")
   }
-
-  /*
-   * The signed upload paths are product-scoped and the metadata insert is
-   * protected by product_media RLS/FKs, so another product lookup here would
-   * only repeat authorization already enforced by the database.
-   */
 
   let primaryAssigned = Boolean(primaryResult?.data?.length)
   const ids = input.items.map(() => crypto.randomUUID())

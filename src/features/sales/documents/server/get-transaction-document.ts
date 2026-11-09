@@ -39,6 +39,9 @@ export async function getTransactionDocument(
   if (!user) throw new ApiError(401, "AUTH_REQUIRED", "Sign in to download this document.")
 
   const business = await getCurrentBusiness()
+  if (!business.permissions.includes("sales.view")) {
+    throw new ApiError(403, "DOCUMENT_FORBIDDEN", "You do not have permission to download sales documents.")
+  }
   const supabase = await createClient()
   const businessResult = await supabase.from("businesses")
     .select("name, address, phone, email, website_url, currency_code, date_format, locale, time_format, timezone")

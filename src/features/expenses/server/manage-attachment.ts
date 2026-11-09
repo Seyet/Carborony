@@ -225,6 +225,9 @@ export async function removeUnreferencedExpenseAttachment({
   storagePath: string
   supabase: ExpenseSupabaseClient
 }) {
+  // Cleanup must not accept a path belonging to another tenant or expense.
+  if (!storagePath.startsWith(`${businessId}/${expenseId}/`)
+    || storagePath.slice(`${businessId}/${expenseId}/`.length).includes("/")) return
   const [idReference, pathReference] = await Promise.all([
     supabase.from("expenses").select("id")
       .eq("business_id", businessId)
@@ -270,6 +273,9 @@ export async function getExpenseAttachmentDownload(expenseId: string) {
 
   const business = await getCurrentBusiness()
   const supabase = await createClient()
+  if (!business.permissions.includes("expenses.view")) {
+    throw new ApiError(403, "EXPENSE_FORBIDDEN", "You do not have permission to view expense attachments.")
+  }
   const expenseResult = await supabase.from("expenses")
     .select("id, attachment_storage_path, attachment_file_name, attachment_mime_type, attachment_file_size")
     .eq("business_id", business.id)

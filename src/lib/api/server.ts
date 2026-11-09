@@ -110,25 +110,39 @@ function isApplicationJson(request: Request) {
 }
 
 function hasAllowedOrigin(request: Request) {
+  // Fetch Metadata is browser-controlled; do not accept cross-site requests even
+  // when the Origin header is missing. Non-browser JSON clients may omit Origin.
+  if (request.headers.get("sec-fetch-site") === "cross-site") return false
   const origin = request.headers.get("origin")
+  if (origin === null) return true
 
-  if (!origin) return true
+  const configured = (process.env.TRUSTED_APP_ORIGINS ?? "")
+    .split(",").map((value) => value.trim()).filter(Boolean)
+  const deploymentOrigins = [
+    process.env.VERCEL_URL,
+    process.env.VERCEL_PROJECT_PRODUCTION_URL,
+    process.env.VERCEL_BRANCH_URL,
+  ].filter((value): value is string => Boolean(value))
+    .map((host) => `https://${host}`)
+  const origins = [...configured, ...deploymentOrigins]
+  if (process.env.NODE_ENV !== "production") {
+    origins.push("http://localhost:3000", "http://127.0.0.1:3000")
+  }
+  const allowedOrigins = new Set(origins.map((value) => {
+    try {
+      const url = new URL(value)
+      if (!["https:", "http:"].includes(url.protocol) || url.username || url.password
+        || url.pathname !== "/" || url.search || url.hash) throw new Error()
+      return url.origin
+    } catch {
+      throw new ApiError(503, "API_ORIGIN_MISCONFIGURED", "Request origin protection is not configured correctly.")
+    }
+  }))
 
+  // Never derive trust from Host, forwarded headers, or the request URL.
   try {
-    const requestUrl = new URL(request.url)
-    const protocol =
-      request.headers.get("x-forwarded-proto")?.split(",", 1)[0]?.trim() ||
-      requestUrl.protocol.replace(":", "")
-    const hosts = [
-      request.headers.get("host"),
-      request.headers.get("x-forwarded-host")?.split(",", 1)[0]?.trim(),
-    ].filter((host): host is string => Boolean(host))
-    const allowedOrigins = new Set([
-      requestUrl.origin,
-      ...hosts.map((host) => `${protocol}://${host}`),
-    ])
-
-    return allowedOrigins.has(new URL(origin).origin)
+    const parsed = new URL(origin)
+    return origin === parsed.origin && allowedOrigins.has(origin)
   } catch {
     return false
   }
@@ -145,39 +159,48 @@ function getMaximumBodySize(value?: number) {
 }
 
 async function readJsonBody(request: Request, maxBytes: number) {
+  const tooLarge = () => new ApiError(413, "PAYLOAD_TOO_LARGE", "The request body is too large.")
   const declaredLength = request.headers.get("content-length")
-
-  if (declaredLength) {
-    const byteLength = Number(declaredLength)
-
-    if (Number.isFinite(byteLength) && byteLength > maxBytes) {
-      throw new ApiError(
-        413,
-        "PAYLOAD_TOO_LARGE",
-        "The request body is too large.",
-      )
+  if (declaredLength !== null) {
+    if (!/^\d+$/.test(declaredLength)) {
+      void request.body?.cancel().catch(() => undefined)
+      throw new ApiError(400, "INVALID_CONTENT_LENGTH", "Content-Length must be a non-negative byte count.")
+    }
+    if (Number(declaredLength) > maxBytes) {
+      void request.body?.cancel().catch(() => undefined)
+      throw tooLarge()
     }
   }
 
-  const buffer = await request.arrayBuffer()
-
-  if (buffer.byteLength > maxBytes) {
-    throw new ApiError(
-      413,
-      "PAYLOAD_TOO_LARGE",
-      "The request body is too large.",
-    )
-  }
-
-  if (buffer.byteLength === 0) {
+  if (!request.body) {
     throw new ApiError(400, "INVALID_JSON", "A JSON request body is required.")
   }
 
+  const reader = request.body.getReader()
+  const decoder = new TextDecoder("utf-8", { fatal: true })
+  const parts: string[] = []
+  let byteLength = 0
   try {
-    const body = new TextDecoder("utf-8", { fatal: true }).decode(buffer)
-    return JSON.parse(body) as unknown
-  } catch {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      byteLength += value.byteLength
+      // Enforce actual bytes even without, or with an understated, Content-Length.
+      if (byteLength > maxBytes) throw tooLarge()
+      parts.push(decoder.decode(value, { stream: true }))
+    }
+    if (byteLength === 0) {
+      throw new ApiError(400, "INVALID_JSON", "A JSON request body is required.")
+    }
+    parts.push(decoder.decode())
+    return JSON.parse(parts.join("")) as unknown
+  } catch (error) {
+    // Do not wait for an untrusted stream's cancellation callback to finish.
+    void reader.cancel().catch(() => undefined)
+    if (error instanceof ApiError) throw error
     throw new ApiError(400, "INVALID_JSON", "The request body is not valid JSON.")
+  } finally {
+    reader.releaseLock()
   }
 }
 

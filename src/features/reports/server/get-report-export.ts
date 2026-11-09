@@ -716,6 +716,9 @@ export async function getReportExportDocument(
       "Join or create a business before exporting reports.",
     )
   }
+  if (!business.permissions.includes("reports.export")) {
+    throw new ApiError(403, "REPORT_EXPORT_FORBIDDEN", "You do not have permission to export reports.")
+  }
   const supabase = await createClient()
   const [settingsResult, optionsResult] = await Promise.all([
     supabase.from("businesses")

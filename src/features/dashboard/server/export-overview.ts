@@ -75,6 +75,9 @@ export async function exportDashboardOverview(
   }
 
   const business = await getCurrentBusiness()
+  if (!business.permissions.includes("reports.export")) {
+    throw new ApiError(403, "DASHBOARD_EXPORT_FORBIDDEN", "You do not have permission to export reports.")
+  }
   const supabase = await createClient()
   const settingsResult = await supabase
     .from("businesses")

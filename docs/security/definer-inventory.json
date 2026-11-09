@@ -1,0 +1,339 @@
+[
+  {
+    "name": "normalize_pos_items",
+    "signature": "public.normalize_pos_items(uuid,jsonb)",
+    "source": "20260823070000_external_pos_items_and_invoices.sql",
+    "roles": [],
+    "authorization": "Internal normalization; business-scoped product/variant lookups. No direct API execution.",
+    "definitionSha256": "6e7a0c2f55950f4d1682fe8922024c8b6f2ba487e9b631a143dbba5559e34a05"
+  },
+  {
+    "name": "complete_pos_sale",
+    "signature": "public.complete_pos_sale(uuid,uuid,text,numeric,jsonb)",
+    "source": "20261109010000_tenant_rpc_execution_hardening.sql",
+    "roles": [
+      "authenticated"
+    ],
+    "authorization": "Authenticated sales.manage; business-scoped customer/product/stock references.",
+    "definitionSha256": "7af882facd123f990c6d90b2cfdcfc7cf027567ac5553b742f883680ac7297fb"
+  },
+  {
+    "name": "create_pos_invoice",
+    "signature": "public.create_pos_invoice(uuid,uuid,numeric,jsonb)",
+    "source": "20261109010000_tenant_rpc_execution_hardening.sql",
+    "roles": [
+      "authenticated"
+    ],
+    "authorization": "Authenticated sales.manage; business-scoped customer/product references.",
+    "definitionSha256": "bddd0f76595a77df59732bab5141d5a91af7d255e692275a540d455b35631b96"
+  },
+  {
+    "name": "apply_inventory_movement",
+    "signature": "public.apply_inventory_movement()",
+    "source": "20260823153000_fix_negative_inventory_movements.sql",
+    "roles": [],
+    "authorization": "Internal/trigger only; business/document inventory or payment guard; executes through authorized parent operations. No direct API execution.",
+    "definitionSha256": "fdfd6843051e623f11112099390e536aabbca048c9cd7e389f7d753713e6f5fb"
+  },
+  {
+    "name": "consume_completed_order_inventory",
+    "signature": "public.consume_completed_order_inventory(uuid,uuid,uuid)",
+    "source": "20260824000000_paid_invoice_inventory.sql",
+    "roles": [],
+    "authorization": "Internal/trigger only; business/document inventory or payment guard; executes through authorized parent operations. No direct API execution.",
+    "definitionSha256": "bd4dd86e7db073fd5e82d5baed1763af83266da993770d8d0214746e81879ade"
+  },
+  {
+    "name": "apply_completed_order_inventory",
+    "signature": "public.apply_completed_order_inventory()",
+    "source": "20260823164000_completed_order_inventory.sql",
+    "roles": [],
+    "authorization": "Internal/trigger only; business/document inventory or payment guard; executes through authorized parent operations. No direct API execution.",
+    "definitionSha256": "837ac80a61f18c5e036db64a21c25018c7bce578dfe62191a2005edff98c57f7"
+  },
+  {
+    "name": "consume_order_document_inventory",
+    "signature": "public.consume_order_document_inventory(uuid,uuid,uuid,text,text)",
+    "source": "20260906040000_fix_storefront_payment_inventory_settlement.sql",
+    "roles": [],
+    "authorization": "Internal/trigger only; business/document inventory or payment guard; executes through authorized parent operations. No direct API execution.",
+    "definitionSha256": "9eb304f1f56a8e15a5c33f578e8adb537376d7c536f2472510af96c4cdd39d25"
+  },
+  {
+    "name": "consume_paid_invoice_inventory",
+    "signature": "public.consume_paid_invoice_inventory(uuid,uuid,uuid)",
+    "source": "20260824000000_paid_invoice_inventory.sql",
+    "roles": [],
+    "authorization": "Internal/trigger only; business/document inventory or payment guard; executes through authorized parent operations. No direct API execution.",
+    "definitionSha256": "bec11d0b86da481a6a0020befff6b1be6101d1aafab14b1a217f65b0e1b79575"
+  },
+  {
+    "name": "apply_paid_invoice_inventory",
+    "signature": "public.apply_paid_invoice_inventory()",
+    "source": "20260824000000_paid_invoice_inventory.sql",
+    "roles": [],
+    "authorization": "Internal/trigger only; business/document inventory or payment guard; executes through authorized parent operations. No direct API execution.",
+    "definitionSha256": "86c5aaf73d587e51ef316102455137b33747ef6a8dce272a21289abd72ee4db2"
+  },
+  {
+    "name": "create_instagram_oauth_state",
+    "signature": "public.create_instagram_oauth_state(uuid,text,text,timestamptz)",
+    "source": "20260904010000_instagram_catalogue_foundation.sql",
+    "roles": [
+      "authenticated"
+    ],
+    "authorization": "auth.uid plus business creator; state bound to initiating user and business.",
+    "definitionSha256": "37a729b094e0b7400b866bfef16b6d22bc951572bceda3cd3929e62b941f2629"
+  },
+  {
+    "name": "consume_instagram_oauth_state",
+    "signature": "public.consume_instagram_oauth_state(text)",
+    "source": "20260904010000_instagram_catalogue_foundation.sql",
+    "roles": [
+      "authenticated"
+    ],
+    "authorization": "auth.uid must equal state initiator; unexpired, single-use state.",
+    "definitionSha256": "9e3da0b01ae3382fa2ecd87bf94badcf172ea2cefbb699c1a60c9450fc872205"
+  },
+  {
+    "name": "complete_instagram_connection",
+    "signature": "public.complete_instagram_connection(uuid,uuid,jsonb,text,text,integer,timestamptz)",
+    "source": "20260904020000_fix_instagram_connection_credential_upsert.sql",
+    "roles": [
+      "service_role"
+    ],
+    "authorization": "Service only; connected actor must own target business; business-scoped connection.",
+    "definitionSha256": "ea7f01efcb3f41374f00744dceb8e1bc73a529e929f7c71e2fa49240868303a5"
+  },
+  {
+    "name": "get_instagram_connection_credential",
+    "signature": "public.get_instagram_connection_credential(uuid,integer)",
+    "source": "20260904010000_instagram_catalogue_foundation.sql",
+    "roles": [
+      "service_role"
+    ],
+    "authorization": "Service only; connection ID and generation; encrypted token returned to backend only.",
+    "definitionSha256": "c1284427021481d3e97618ac97eb9ac13ad1d8ed725de7d504e0f0b773e68bf0"
+  },
+  {
+    "name": "replace_instagram_connection_credential",
+    "signature": "public.replace_instagram_connection_credential(uuid,integer,text,text,integer,timestamptz)",
+    "source": "20260904010000_instagram_catalogue_foundation.sql",
+    "roles": [
+      "service_role"
+    ],
+    "authorization": "Service only; connection ID/generation/status with lock.",
+    "definitionSha256": "123c8b7b0c44967e5aa5f0882de23ea2ae37f6257d04df9635c207745b5876d2"
+  },
+  {
+    "name": "start_instagram_sync_run",
+    "signature": "public.start_instagram_sync_run(uuid,uuid,uuid)",
+    "source": "20260904010000_instagram_catalogue_foundation.sql",
+    "roles": [
+      "service_role"
+    ],
+    "authorization": "Service only; actor owns business; connection ID/business/generation checked.",
+    "definitionSha256": "90f73fd01482d0c110fac4abe523f0e07f3ff5c86bced0ad6346c35ab9d95a8f"
+  },
+  {
+    "name": "set_instagram_connection_preferences",
+    "signature": "public.set_instagram_connection_preferences(uuid,boolean)",
+    "source": "20260904010000_instagram_catalogue_foundation.sql",
+    "roles": [
+      "authenticated"
+    ],
+    "authorization": "Business creator; update filtered by business.",
+    "definitionSha256": "41f81c4b93510ff53502f817641d2bb4dd227504da6943412db9108d5bc7fbb9"
+  },
+  {
+    "name": "disconnect_instagram_connection",
+    "signature": "public.disconnect_instagram_connection(uuid,uuid,integer)",
+    "source": "20260904010000_instagram_catalogue_foundation.sql",
+    "roles": [
+      "service_role"
+    ],
+    "authorization": "Service only; actor owns business; connection business/generation checked.",
+    "definitionSha256": "64d2a781be11dd0d82a07d07b975b145dd910d4959edd306a18e2eddffdba416"
+  },
+  {
+    "name": "ingest_instagram_media",
+    "signature": "public.ingest_instagram_media(uuid,uuid,integer,jsonb,jsonb,jsonb)",
+    "source": "20260904040000_fix_instagram_media_ingestion_upsert.sql",
+    "roles": [
+      "service_role"
+    ],
+    "authorization": "Service only; connection business/generation/status checked; duplicate product constrained to business.",
+    "definitionSha256": "dbdbe9433686068e37a178ceb0fec99c45db154ea42551596331fbb02646b8fe"
+  },
+  {
+    "name": "save_instagram_product_draft",
+    "signature": "public.save_instagram_product_draft(uuid,uuid,jsonb)",
+    "source": "20260904010000_instagram_catalogue_foundation.sql",
+    "roles": [
+      "authenticated"
+    ],
+    "authorization": "products.manage; draft ID/business scoped.",
+    "definitionSha256": "4f64fbb668c4eb8c1045ab0ed324c41262e99478b4eece5c42512074cdd969b8"
+  },
+  {
+    "name": "approve_instagram_product_draft",
+    "signature": "public.approve_instagram_product_draft(uuid,uuid,text,boolean)",
+    "source": "20260904010000_instagram_catalogue_foundation.sql",
+    "roles": [
+      "authenticated"
+    ],
+    "authorization": "products.manage; draft, category and catalogue business scoped; locked draft.",
+    "definitionSha256": "d8cdab1dda8a805599960286d9e8f35bc4895bb302d9b52831af7fa3e5dc30a9"
+  },
+  {
+    "name": "attach_instagram_draft_to_product",
+    "signature": "public.attach_instagram_draft_to_product(uuid,uuid,uuid)",
+    "source": "20260904010000_instagram_catalogue_foundation.sql",
+    "roles": [
+      "authenticated"
+    ],
+    "authorization": "products.manage; draft and target product constrained to business.",
+    "definitionSha256": "8cf88a282eef46ff55c6a221e13f1dd79a14c4256b938db935b072a331cfc1ee"
+  },
+  {
+    "name": "resolve_instagram_product_draft",
+    "signature": "public.resolve_instagram_product_draft(uuid,uuid,text)",
+    "source": "20260904010000_instagram_catalogue_foundation.sql",
+    "roles": [
+      "authenticated"
+    ],
+    "authorization": "products.manage; draft ID/business scoped.",
+    "definitionSha256": "4ef05ca2b5bde7fe0592ae705f3de28c6fe88e11e10aa892507eb1333cff2021"
+  },
+  {
+    "name": "create_storefront_online_order",
+    "signature": "public.create_storefront_online_order(text,jsonb,text,text,text,text,text,uuid,text,text,uuid,text,text)",
+    "source": "20260906020000_storefront_online_payments.sql",
+    "roles": [
+      "service_role"
+    ],
+    "authorization": "Service only; published store resolves business; product, delivery and payment account scoped.",
+    "definitionSha256": "98208f9545f949c86354751d5042a090b617bc1e69fb71f3184955251154298c"
+  },
+  {
+    "name": "settle_storefront_payment",
+    "signature": "public.settle_storefront_payment(text,bigint,text,text,text)",
+    "source": "20260906040000_fix_storefront_payment_inventory_settlement.sql",
+    "roles": [
+      "service_role"
+    ],
+    "authorization": "Service only; verified reference/amount/currency/mode; locked payment/order association.",
+    "definitionSha256": "a84a08892a2119682d668f354397773b2844e9448da84d3d81989ec55830741f"
+  },
+  {
+    "name": "guard_storefront_payment_order",
+    "signature": "public.guard_storefront_payment_order()",
+    "source": "20260906080000_reconcile_reviewed_order_payments.sql",
+    "roles": [],
+    "authorization": "Internal/trigger only; business/document inventory or payment guard; executes through authorized parent operations. No direct API execution.",
+    "definitionSha256": "1120ae77a2c97821b7f50442951fd072e371b24b91a78085790b897b91bfb827"
+  },
+  {
+    "name": "guard_storefront_payment_items",
+    "signature": "public.guard_storefront_payment_items()",
+    "source": "20260906030000_harden_storefront_online_payments.sql",
+    "roles": [],
+    "authorization": "Internal/trigger only; business/document inventory or payment guard; executes through authorized parent operations. No direct API execution.",
+    "definitionSha256": "c33f1bc468087085743a5551f7ab762433e4d69b4bd2be0d932cdea21ad00057"
+  },
+  {
+    "name": "set_online_order_payment_method",
+    "signature": "public.set_online_order_payment_method()",
+    "source": "20260906030000_harden_storefront_online_payments.sql",
+    "roles": [],
+    "authorization": "Internal/trigger only; business/document inventory or payment guard; executes through authorized parent operations. No direct API execution.",
+    "definitionSha256": "9a1fb2ad4c159b735390cbb937a4616588e64be555424f530d798b690c76a235"
+  },
+  {
+    "name": "update_order_status",
+    "signature": "public.update_order_status(uuid,uuid,text,text)",
+    "source": "20260906080000_reconcile_reviewed_order_payments.sql",
+    "roles": [
+      "authenticated"
+    ],
+    "authorization": "auth.uid and sales.manage; order ID/business scoped; payment and inventory checks.",
+    "definitionSha256": "68e6215f49a241e598da3f529b05f213ea1c63a9736c8964d4cc584fc952927d"
+  },
+  {
+    "name": "get_order_payment_state",
+    "signature": "public.get_order_payment_state(uuid,uuid)",
+    "source": "20261109010000_tenant_rpc_execution_hardening.sql",
+    "roles": [
+      "authenticated"
+    ],
+    "authorization": "sales.view; payment lookup constrained by business and order ID.",
+    "definitionSha256": "4bb58ac6dff026cd346dffe1dd4f6e720581e271e1e7120fb0006beef766d6b3"
+  },
+  {
+    "name": "search_public_storefront_products",
+    "signature": "public.search_public_storefront_products(text,boolean,text,uuid,integer,integer)",
+    "source": "20260921090000_paginate_public_storefront.sql",
+    "roles": [
+      "anon",
+      "authenticated"
+    ],
+    "authorization": "Intentional public catalogue read for published stores; drafts require settings.view; scoped enrichment.",
+    "definitionSha256": "4def8a93e18711c59d6f169f91d9eac087da84073b99cac4ec5e8f71bab217e1"
+  },
+  {
+    "name": "dashboard_revenue_documents",
+    "signature": "public.dashboard_revenue_documents(uuid,date,date)",
+    "source": "20261109000000_dashboard_all_sales_channels.sql",
+    "roles": [],
+    "authorization": "dashboard.view; all documents/customers/payments scoped to target business.",
+    "definitionSha256": "752c6c24bd508e6919760973f51c7789ca7603129d030746bef303f019ad7297"
+  },
+  {
+    "name": "dashboard_revenue_items",
+    "signature": "public.dashboard_revenue_items(uuid,date,date)",
+    "source": "20261109000000_dashboard_all_sales_channels.sql",
+    "roles": [],
+    "authorization": "Internal; authorization delegated to dashboard_revenue_documents; item/product/variant business joins.",
+    "definitionSha256": "95d4450947f00e82be46c682146289f56d8eee236a7436e0509d7b83b64ea882"
+  },
+  {
+    "name": "get_dashboard_metrics_all_channels",
+    "signature": "public.get_dashboard_metrics_all_channels(uuid,date,date)",
+    "source": "20261109000000_dashboard_all_sales_channels.sql",
+    "roles": [
+      "authenticated"
+    ],
+    "authorization": "dashboard helper authorization; legacy metrics are hosted dependency to audit separately.",
+    "definitionSha256": "def5d30c68b955b43124a42438f07b856535f9e0f5c981d4f855192bade2cdc6"
+  },
+  {
+    "name": "get_dashboard_sales_overview_all_channels",
+    "signature": "public.get_dashboard_sales_overview_all_channels(uuid,date,date)",
+    "source": "20261109000000_dashboard_all_sales_channels.sql",
+    "roles": [
+      "authenticated"
+    ],
+    "authorization": "dashboard_revenue_documents authorizes; business-specific timezone.",
+    "definitionSha256": "29073592b038b9049f66aa24e80c644f6fe88c01f89a6b0b64f4d10aed1de73c"
+  },
+  {
+    "name": "get_dashboard_top_products_all_channels",
+    "signature": "public.get_dashboard_top_products_all_channels(uuid,date,date,integer)",
+    "source": "20261109000000_dashboard_all_sales_channels.sql",
+    "roles": [
+      "authenticated"
+    ],
+    "authorization": "dashboard_revenue_items authorizes; business-scoped product/category joins.",
+    "definitionSha256": "3ed23676f3ed12fac77787a4b560ae19751d9519bdb65f7c95ae95d93f3b17d2"
+  },
+  {
+    "name": "get_dashboard_recent_transactions_all_channels",
+    "signature": "public.get_dashboard_recent_transactions_all_channels(uuid,date,date,integer)",
+    "source": "20261109000000_dashboard_all_sales_channels.sql",
+    "roles": [
+      "authenticated"
+    ],
+    "authorization": "dashboard_revenue_documents authorizes; bounded limit.",
+    "definitionSha256": "8cf149ec68c708f424377b81a86b1eaa7691395b923672d846cb851d06246ea7"
+  }
+]

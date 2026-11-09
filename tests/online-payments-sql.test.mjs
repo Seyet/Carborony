@@ -113,5 +113,56 @@ test("PostgreSQL online checkout, settlement, inventory and access controls", as
     await assert.rejects(db.exec("select * from storefront_payments"), /permission denied/)
     await assert.rejects(settle(first), /permission denied/)
     await db.exec("reset role")
+
+    // Apply the real hardening migration, then impersonate separate tenants.
+    await db.exec(migration("20261109010000_tenant_rpc_execution_hardening"))
+    const otherOwner = "00000000-0000-4000-8000-000000000080"
+    const otherBusiness = "00000000-0000-4000-8000-000000000081"
+    const otherOrder = "00000000-0000-4000-8000-000000000082"
+    await db.query("insert into profiles values ($1)", [otherOwner])
+    await db.query("insert into businesses(id,slug,created_by) values ($1,'other-tenant',$2)", [otherBusiness,otherOwner])
+    await db.query(`insert into business_payment_accounts(business_id,provider_mode,status,operation_id,bank_code,bank_name,account_name,account_last_four,commission_percent,created_by)
+      values ($1,'test','creating',gen_random_uuid(),'058','Other Bank','Other Owner','9999',0,$2)`,[otherBusiness,otherOwner])
+    await db.query(`insert into orders(id,business_id,order_number,document_type,status,payment_status,total_amount,placed_at)
+      values ($1,$2,'OTHER-ORDER','order','pending','unpaid',100,now())`,[otherOrder,otherBusiness])
+    // Grant only what the fixture permission helpers/payout policy need.
+    // These are real payout RLS policies; core customer/order RLS is not in this fixture.
+    await db.exec("grant select on businesses to authenticated")
+    await db.query("select set_config('request.jwt.claim.sub',$1,false)",[owner])
+    await db.exec("set role authenticated")
+    assert.deepEqual((await db.query("select business_id from business_payment_accounts")).rows.map(r=>r.business_id),[business])
+    assert.equal((await db.query("select * from business_payment_accounts where business_id=$1",[otherBusiness])).rows.length,0)
+    await assert.rejects(db.query("update business_payment_accounts set account_name='forbidden' where business_id=$1",[otherBusiness]),/permission denied/)
+    await assert.rejects(db.query("select * from complete_pos_sale($1,null,'cash',0,'[]'::jsonb)",[otherBusiness]),/access to this business/)
+    await assert.rejects(db.query("select * from create_pos_invoice($1,null,0,'[]'::jsonb)",[otherBusiness]),/access to this business/)
+    assert.equal((await db.query("select * from get_order_payment_state($1,$2)",[business,otherOrder])).rows.length,0)
+    await assert.rejects(db.query("select * from get_order_payment_state($1,$2)",[otherBusiness,otherOrder]),/access to this business/)
+    await assert.rejects(db.query("select * from update_order_status($1,$2,'confirmed')",[business,otherOrder]),/could not be found/)
+    await db.exec("reset role")
+    await db.query("select set_config('request.jwt.claim.sub',$1,false)",[otherOwner])
+    await db.exec("set role authenticated")
+    assert.deepEqual((await db.query("select business_id from business_payment_accounts")).rows.map(r=>r.business_id),[otherBusiness])
+    await db.exec("reset role")
+
+    // A valid member without a module permission must not bypass the UI via RPC.
+    await db.exec(`create or replace function has_business_permission(target_business_id uuid, permission_code text)
+      returns boolean language sql as $$ select public.is_business_member(target_business_id)
+        and coalesce(current_setting('test.deny_permissions',true),'') <> 'yes' $$`)
+    await db.query("select set_config('request.jwt.claim.sub',$1,false)",[owner])
+    await db.exec("select set_config('test.deny_permissions','yes',false); set role authenticated")
+    await assert.rejects(db.query("select * from complete_pos_sale($1,null,'cash',0,'[]'::jsonb)",[business]),/access to this business/)
+    await assert.rejects(db.query("select * from create_pos_invoice($1,null,0,'[]'::jsonb)",[business]),/access to this business/)
+    await assert.rejects(db.query("select * from get_order_payment_state($1,$2)",[business,first.order_id]),/access to this business/)
+    await db.exec("reset role")
+
+    const reviewed = JSON.parse(read("docs/security/definer-inventory.json"))
+    for (const entry of reviewed) {
+      const exists = (await db.query("select to_regprocedure($1)::text as signature",[entry.signature])).rows[0].signature
+      if (!exists) continue // Optional modules are covered by the source inventory, not fabricated SQL stubs.
+      for (const role of ['anon','authenticated','service_role']) {
+        const allowed = (await db.query("select has_function_privilege($1,$2,'EXECUTE') as allowed",[role,entry.signature])).rows[0].allowed
+        assert.equal(allowed,entry.roles.includes(role),`${role}: ${entry.signature}`)
+      }
+    }
   } finally { await db.close() }
 })

@@ -37,6 +37,7 @@ yarn-error.log*
 
 # vercel
 .vercel
+.security
 
 # typescript
 *.tsbuildinfo
@@ -66,3 +67,5 @@ supabase/migrations/*
 !supabase/migrations/20260824000000_paid_invoice_inventory.sql
 
 !supabase/migrations/20261109000000_dashboard_all_sales_channels.sql
+
+!supabase/migrations/20261109010000_tenant_rpc_execution_hardening.sql
