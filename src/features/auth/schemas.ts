@@ -74,3 +74,7 @@ export type ResendSignupOtpInput = z.output<typeof resendSignupOtpSchema>
 export type ResetPasswordInput = z.output<typeof resetPasswordSchema>
 export type VerifySignupOtpInput = z.output<typeof verifySignupOtpSchema>
 export type VerifyRecoveryOtpInput = z.output<typeof verifyRecoveryOtpSchema>
+
+export const verifyLoginOtpSchema = loginSchema.extend({
+  token: verifyRecoveryOtpSchema.shape.token,
+})

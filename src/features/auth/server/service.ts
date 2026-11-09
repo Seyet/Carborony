@@ -1,6 +1,7 @@
 import "server-only"
 
 import {
+  createClient as createIsolatedClient,
   type AuthError,
   isAuthRetryableFetchError,
 } from "@supabase/supabase-js"
@@ -22,7 +23,7 @@ import type {
 } from "@/features/auth/schemas"
 import { ApiError, type JsonHandlerResult } from "@/lib/api/server"
 import { getSafeNextPath } from "@/lib/auth/redirect"
-import { isSupabaseConfigured } from "@/lib/supabase/env"
+import { getSupabaseEnvironment, isSupabaseConfigured } from "@/lib/supabase/env"
 import { createClient } from "@/lib/supabase/server"
 import { hasRecentEmailProof } from "./password-security"
 
@@ -140,11 +141,13 @@ async function createAuthClient(responseHeaders: Headers) {
   return createClient({ responseHeaders, strictCookieWrites: true })
 }
 
-export async function login(
-  input: LoginInput,
-  responseHeaders: Headers,
-): Promise<JsonHandlerResult<AuthRedirectData>> {
-  const supabase = await createAuthClient(responseHeaders)
+async function validateLoginPassword(input: LoginInput) {
+  ensureConfigured()
+  const { url, anonKey } = getSupabaseEnvironment()
+  // Password validation must never publish a session to the browser.
+  const supabase = createIsolatedClient(url, anonKey, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+  })
   const { error } = await supabase.auth.signInWithPassword({
     email: input.email,
     password: input.password,
@@ -170,6 +173,40 @@ export async function login(
     throwSharedProviderError("login", error)
   }
 
+  const { error: signOutError } = await supabase.auth.signOut({ scope: "local" })
+  if (signOutError) throwSharedProviderError("password session cleanup", signOutError)
+}
+
+export async function login(
+  input: LoginInput,
+): Promise<JsonHandlerResult<{ accepted: true }>> {
+  await validateLoginPassword(input)
+  const { url, anonKey } = getSupabaseEnvironment()
+  const supabase = createIsolatedClient(url, anonKey, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+  })
+  const { error } = await supabase.auth.signInWithOtp({
+    email: input.email,
+    options: { shouldCreateUser: false },
+  })
+  if (error) throwSharedProviderError("login code delivery", error)
+  return { data: { accepted: true }, message: "Check your email for your sign-in code." }
+}
+
+export async function verifyLoginOtp(
+  input: LoginInput & { token: string },
+  responseHeaders: Headers,
+): Promise<JsonHandlerResult<AuthRedirectData>> {
+  // Recheck credentials so calling this endpoint directly cannot skip the password.
+  await validateLoginPassword(input)
+  const supabase = await createAuthClient(responseHeaders)
+  const { data, error } = await supabase.auth.verifyOtp({
+    email: input.email, token: input.token, type: "email",
+  })
+  if (error) throwOtpVerificationError(error)
+  if (!data.session || !data.user) {
+    throw new ApiError(401, "OTP_VERIFICATION_FAILED", "We couldn't verify that code. Request a new code and try again.")
+  }
   return {
     data: { redirectTo: getSafeNextPath(input.next) },
     message: "Signed in successfully.",

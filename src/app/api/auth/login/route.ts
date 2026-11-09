@@ -8,7 +8,7 @@ export async function POST(request: Request) {
   return handleJsonPost(
     request,
     loginSchema,
-    (input) => login(input, responseHeaders),
+    (input) => login(input),
     { responseHeaders },
   )
 }
