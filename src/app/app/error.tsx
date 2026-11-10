@@ -16,9 +16,9 @@ export default function AppError({
   }, [error])
 
   return (
-    <div className="min-h-[420px] rounded-xl bg-card shadow-sm ring-1 ring-foreground/8">
+    <div className="min-h-105 rounded-xl bg-card shadow-sm ring-1 ring-foreground/8">
       <ErrorState
-        className="min-h-[420px]"
+        className="min-h-105"
         title="We couldn’t load this workspace"
         description="Something unexpected happened while preparing this page. Try again; your business data has not been changed."
         onRetry={retry}

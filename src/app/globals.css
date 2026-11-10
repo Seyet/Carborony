@@ -425,3 +425,111 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Public shop presentation: each merchant keeps their own accent colour. */
+.storefront-hero {
+  background:
+    radial-gradient(ellipse at 92% 12%, color-mix(in srgb, var(--store-color) 14%, transparent), transparent 58%),
+    linear-gradient(135deg, color-mix(in srgb, var(--store-color) 4%, var(--background)), var(--background));
+}
+
+.storefront-hero-halo {
+  position: absolute;
+  width: min(75vw, 52rem);
+  aspect-ratio: 1;
+  right: -15%;
+  top: -15%;
+  border: 1px solid color-mix(in srgb, var(--store-color) 12%, transparent);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.storefront-hero-halo::after {
+  content: "";
+  position: absolute;
+  inset: 12%;
+  border: inherit;
+  border-radius: inherit;
+}
+
+.storefront-hero-placeholder {
+  background:
+    radial-gradient(circle at 25% 25%, color-mix(in srgb, var(--store-color) 30%, transparent), transparent 60%),
+    color-mix(in srgb, var(--store-color) 10%, var(--muted));
+  color: var(--foreground);
+}
+
+.storefront-hero-image img {
+  animation: storefront-image-settle 1.2s cubic-bezier(0.22, 0.8, 0.2, 1) both;
+}
+
+.storefront-floating-note {
+  animation: storefront-note-float 6s ease-in-out infinite;
+}
+
+.storefront-shop-cta {
+  transition: transform 220ms ease, box-shadow 220ms ease;
+}
+
+.storefront-shop-cta:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 30px -12px color-mix(in srgb, var(--store-color) 60%, transparent);
+}
+
+.storefront-shop-cta svg:last-child {
+  transition: transform 220ms ease;
+}
+
+.storefront-shop-cta:hover svg:last-child { transform: translateX(3px); }
+
+.storefront-category-nav,
+.storefront-trust-strip {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--store-color) 20%, transparent) transparent;
+  overscroll-behavior-x: contain;
+}
+
+.storefront-canvas [data-storefront-reveal] {
+  transition: opacity 650ms ease, transform 650ms cubic-bezier(0.22, 0.8, 0.2, 1), box-shadow 250ms ease;
+}
+
+.storefront-canvas [data-reveal-state="pending"] {
+  opacity: 0;
+  transform: translateY(24px);
+}
+
+.storefront-canvas [data-reveal-state="visible"] {
+  transition-delay: var(--reveal-delay, 0ms);
+}
+
+.storefront-catalogue input[type="search"]:focus-visible {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--store-color) 18%, transparent);
+}
+
+@keyframes storefront-image-settle {
+  from { transform: scale(1.07); }
+  to { transform: scale(1); }
+}
+
+@keyframes storefront-note-float {
+  0%, 100% { transform: translateY(0) rotate(-2deg); }
+  50% { transform: translateY(-7px) rotate(0); }
+}
+
+@media (max-width: 639px) {
+  .storefront-hero-visual { animation: storefront-rise 680ms 100ms ease backwards; }
+  .storefront-product-card { border-radius: 1rem; }
+  .storefront-product-card > div { padding: 0.8rem; }
+  .storefront-trust-strip { scroll-padding-inline: 1rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .storefront-canvas *,
+  .storefront-canvas *::before,
+  .storefront-canvas *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+  .storefront-canvas [data-reveal-state="pending"] { opacity: 1; transform: none; }
+}
